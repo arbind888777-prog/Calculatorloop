@@ -4,54 +4,56 @@
 FROM node:22-alpine AS builder
 WORKDIR /app
 
-# Copy Prisma schema first (needed for postinstall script)
-COPY prisma ./prisma
-COPY package.json package-lock.json* ./
+# Install build dependencies
+RUN apk add --no-cache libc6-compat python3 make g++
 
-# Install dependencies (postinstall runs prisma generate)
-# Check https://github.com/nodejs/docker-node/tree/b4117f9333da4138b03a546ec926ef50a31506c3#nodealpine to understand why libc6-compat might be needed.
-RUN apk add --no-cache libc6-compat
+# Copy package files first for better caching
+COPY package*.json ./
+COPY prisma ./prisma/
 
-# Added --legacy-peer-deps to avoid strict peer dependency issues (common with React 19)
-RUN npm ci --legacy-peer-deps --prefer-offline --no-audit --progress=false
+# Install dependencies with legacy peer deps flag
+RUN npm ci --legacy-peer-deps --prefer-offline --no-audit
 
-# Copy source and build
+# Copy source code
 COPY . .
 
-# Enable standalone output for smaller docker image
+# Build the Next.js application using standalone output
 ENV NEXT_OUTPUT=standalone
-
 RUN npm run build
 
+# Production runtime stage
 FROM node:22-alpine AS runner
 WORKDIR /app
+
 ENV NODE_ENV=production
 ENV PORT=8080
 
-# Copy Prisma schema and config files if needed at runtime
-# (Standalone build often bundles what it needs, but keeping schema is sometimes useful for migrations)
-COPY prisma ./prisma
+# Install runtime dependencies
+RUN apk add --no-cache libc6-compat dumb-init
 
-# Copy JSON data files needed by toolsData 
-# NOTE: In standalone mode, these need to be copied relative to where the server is running or trace them.
-# The standalone build puts everything in .next/standalone.
-# We need to ensure static assets and public folder are also copied.
+# Copy Prisma schema for runtime (if needed for migrations)
+COPY --from=builder /app/prisma ./prisma/
 
-COPY --from=builder /app/public ./public
+# Copy public assets
+COPY --from=builder /app/public ./public/
 
-# Automatically leverage output traces to reduce image size
-# https://nextjs.org/docs/advanced-features/output-file-tracing
+# Copy Next.js standalone build
 COPY --from=builder /app/.next/standalone ./
-COPY --from=builder /app/.next/static ./.next/static
+COPY --from=builder /app/.next/static ./.next/static/
 
-# Check if we need to manually copy the JSON files if they aren't traced. 
-# Usually 'require' calls are traced. If they are read via fs.readFileSync, they might not be.
-# Just in case, copying them to the root as before, because standalone might expect them in the working dir.
-COPY *-tools-report.json ./
-COPY *-tools-summary.md ./
+# Copy JSON configuration files if they exist
+COPY --chown=node:node *.json ./
+COPY --chown=node:node *.md ./
+
+# Create non-root user for security
+RUN addgroup -g 1001 -S nodejs
+RUN adduser -S nextjs -u 1001
+USER nextjs
 
 EXPOSE 8080
+HEALTHCHECK --interval=30s --timeout=3s --start-period=40s --retries=3 \
+  CMD node -e "require('http').get('http://localhost:8080', (r) => {if (r.statusCode !== 200) throw new Error(r.statusCode)})"
 
-# Cloud Run sets $PORT; Next respects PORT env var
-# For standalone, we run 'node server.js'
+# Use dumb-init to handle signals properly
+ENTRYPOINT ["/sbin/dumb-init", "--"]
 CMD ["node", "server.js"]

@@ -7,11 +7,56 @@ build
 .env.development
 .env.test
 npm-debug.log
+yarn-error.log
 .git
 .gitignore
 Dockerfile
+.dockerignore
 docker-compose*.yml
 *.tgz
 coverage
 .vscode
 .idea
+.DS_Store
+.env.local.bak
+.env.utf8
+.tmp-check.js
+
+# Documentation (usually not needed in container)
+*.md
+README.md
+IMPLEMENTATION_GUIDE.md
+GOOGLE_CLOUD_BUILD_FIX.md
+
+# Reports and logs
+*.log
+*.json.bak
+*-tools-report.json
+*-tools-summary.md
+*-tools-status.md
+business-tools-report.json
+education-tools-report.json
+health-tools-report.json
+math-tools-report.json
+physics-tools-report.json
+scientific-tools-report.json
+technology-tools-report.json
+error.txt
+error.log
+build.log
+
+# Temporary files
+tmp*.txt
+tmp*.html
+
+# .git folder
+.git
+
+# _legacy_backup
+_legacy_backup
+
+# diagnostics
+diagnostics
+
+# scripts (usually for dev/CI setup)
+scripts/
