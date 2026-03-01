@@ -29,9 +29,9 @@ ENV NODE_ENV=production
 ENV PORT=8080
 
 # Install runtime dependencies
-RUN apk add --no-cache libc6-compat dumb-init
+RUN apk add --no-cache libc6-compat
 
-# Copy Prisma schema for runtime (if needed for migrations)
+# Copy Prisma schema for runtime
 COPY --from=builder /app/prisma ./prisma/
 
 # Copy public assets
@@ -41,19 +41,16 @@ COPY --from=builder /app/public ./public/
 COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/.next/static ./.next/static/
 
-# Copy JSON configuration files if they exist
-COPY --chown=node:node *.json ./
-COPY --chown=node:node *.md ./
+# Copy .env files if needed
+COPY --chown=node:node .env* ./
 
-# Create non-root user for security
+# Create non-root user for security (optional but recommended)
 RUN addgroup -g 1001 -S nodejs
 RUN adduser -S nextjs -u 1001
 USER nextjs
 
 EXPOSE 8080
-HEALTHCHECK --interval=30s --timeout=3s --start-period=40s --retries=3 \
-  CMD node -e "require('http').get('http://localhost:8080', (r) => {if (r.statusCode !== 200) throw new Error(r.statusCode)})"
 
-# Use dumb-init to handle signals properly
-ENTRYPOINT ["/sbin/dumb-init", "--"]
+# Cloud Run requires PORT env var and Next.js standalone mode
+# For standalone, we run 'node server.js' from the working directory root
 CMD ["node", "server.js"]
