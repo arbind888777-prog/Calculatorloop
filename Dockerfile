@@ -9,16 +9,22 @@ RUN apk add --no-cache libc6-compat python3 make g++
 
 # Copy package files first for better caching
 COPY package*.json ./
+
+# Copy Prisma schema before npm install
 COPY prisma ./prisma/
 
-# Install dependencies with legacy peer deps flag
-RUN npm ci --legacy-peer-deps --prefer-offline --no-audit
+# Install dependencies
+RUN npm ci --legacy-peer-deps --prefer-offline --no-audit || npm install --legacy-peer-deps
 
 # Copy source code
 COPY . .
 
-# Build the Next.js application using standalone output
+# Build with environment set for standalone
 ENV NEXT_OUTPUT=standalone
+ENV NEXT_TELEMETRY_DISABLED=1
+ENV NODE_ENV=production
+
+# Build the Next.js application
 RUN npm run build
 
 # Production runtime stage
@@ -26,31 +32,25 @@ FROM node:22-alpine AS runner
 WORKDIR /app
 
 ENV NODE_ENV=production
+ENV NEXT_TELEMETRY_DISABLED=1
 ENV PORT=8080
 
-# Install runtime dependencies
-RUN apk add --no-cache libc6-compat
-
-# Copy Prisma schema for runtime
+# Copy Prisma schema (for runtime if needed)
 COPY --from=builder /app/prisma ./prisma/
 
-# Copy public assets
+# Copy public folder
 COPY --from=builder /app/public ./public/
 
-# Copy Next.js standalone build
+# Copy Next.js standalone build output
 COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/.next/static ./.next/static/
 
-# Copy .env files if needed
-COPY --chown=node:node .env* ./
-
-# Create non-root user for security (optional but recommended)
+# Create non-root user for better security
 RUN addgroup -g 1001 -S nodejs
 RUN adduser -S nextjs -u 1001
 USER nextjs
 
 EXPOSE 8080
 
-# Cloud Run requires PORT env var and Next.js standalone mode
-# For standalone, we run 'node server.js' from the working directory root
+# Start server - Cloud Run will pass PORT via environment variable
 CMD ["node", "server.js"]
