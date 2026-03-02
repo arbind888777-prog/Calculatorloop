@@ -30,22 +30,19 @@ steps:
     timeout: '1800s'
     waitFor: ['build-image']
 
-  # Step 3: Deploy to Cloud Run
-  - name: 'gcr.io/cloud-builders/run'
+  # Step 3: Deploy to Cloud Run using gcloud (explicit)
+  - name: 'gcr.io/cloud-builders/gcloud'
+    entrypoint: 'bash'
     args:
-      - 'deploy'
-      - 'calculatorloop'
-      - '--image'
-      - 'gcr.io/$PROJECT_ID/calculatorloop:$SHORT_SHA'
-      - '--region'
-      - 'asia-south1'
-      - '--platform'
-      - 'managed'
-      - '--allow-unauthenticated'
-      - '--memory'
-      - '2Gi'
-      - '--timeout'
-      - '300'
+      - '-c'
+      - |
+        gcloud run deploy calculatorloop \
+          --image gcr.io/$PROJECT_ID/calculatorloop:$SHORT_SHA \
+          --region=asia-south1 \
+          --platform=managed \
+          --allow-unauthenticated \
+          --memory=2Gi \
+          --timeout=300s
     timeout: '900s'
 
 images:

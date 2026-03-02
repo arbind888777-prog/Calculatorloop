@@ -1,7 +1,7 @@
 # Multi-stage Dockerfile for Next.js optimized for Google Cloud Run
 # Builds the app, then runs it in a minimal runtime image
 
-FROM node:22-alpine AS builder
+FROM node:18-alpine AS builder
 WORKDIR /app
 
 # Install build dependencies
@@ -28,7 +28,7 @@ ENV NODE_ENV=production
 RUN npm run build
 
 # Production runtime stage
-FROM node:22-alpine AS runner
+FROM node:18-alpine AS runner
 WORKDIR /app
 
 ENV NODE_ENV=production
