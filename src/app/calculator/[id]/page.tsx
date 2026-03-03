@@ -172,7 +172,13 @@ export default async function CalculatorPage({ params }: { params: Promise<{ id:
       </div>
     )
   } catch (err) {
-    console.error('Calculator page render error:', err)
+    const digest = typeof err === 'object' && err && 'digest' in err ? String((err as any).digest) : ''
+    const isExpectedNotFound = digest === 'NEXT_HTTP_ERROR_FALLBACK;404'
+
+    if (!isExpectedNotFound) {
+      console.error('Calculator page render error:', err)
+    }
+
     // Map unexpected errors to 404 to avoid 5xx responses for malformed requests or bad params
     notFound()
   }
