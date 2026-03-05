@@ -56,7 +56,9 @@ if (isVercel && !forceMigrateDeploy) {
   prismaExit = run("prisma", ["db", "push", "--accept-data-loss"]);
 }
 
-if (prismaExit !== 0) process.exit(prismaExit);
+if (prismaExit !== 0) {
+  console.warn("⚠️  Prisma step failed (exit code " + prismaExit + "). DATABASE_URL may be unavailable. Continuing with Next.js build...\n");
+}
 
 // Next.js 16 enables Turbopack by default for builds. This project uses a custom
 // webpack config (see `next.config.js`), so explicitly select webpack.
