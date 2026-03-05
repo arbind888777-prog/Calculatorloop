@@ -2,18 +2,18 @@
 
 import { ReactNode, useState, useEffect, useMemo, useRef } from "react"
 import { 
-  Activity, LucideIcon, Download, Printer, Share2, RotateCcw, 
-  FileText, FileSpreadsheet, FileJson, FileCode, FileImage, 
-  Database, FileArchive, Presentation, X, ChevronDown, TrendingUp,
-  Heart, Scale, AlertCircle, CheckCircle, Info, Copy, Mail, History, Trash2,
-  Star, Bookmark, Clock
+  Activity, LucideIcon, Download, Printer, Share2,
+  FileText, FileSpreadsheet, FileJson, FileCode, FileImage, FileType,
+  Database, FileArchive, Presentation, TrendingUp,
+  Heart, Scale, AlertCircle, CheckCircle, Info, Copy, History, Trash2,
+  Zap, ZapOff, Settings, Image, Code,
+  RefreshCw, Link as LinkIcon
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Switch } from "@/components/ui/switch"
 import { Label } from "@/components/ui/label"
 import { cn } from "@/lib/utils"
 import { toast } from "react-hot-toast"
-import { CustomDownloadModal } from "@/components/CustomDownloadModal"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -69,14 +69,6 @@ interface ComprehensiveHealthTemplateProps {
   toolId?: string
 }
 
-export interface DownloadOptions {
-  includeSummary: boolean
-  includeMetrics: boolean
-  includeRecommendations: boolean
-  includeChart: boolean
-  includeDetailedBreakdown: boolean
-}
-
 export function ComprehensiveHealthTemplate({
   title,
   description,
@@ -106,20 +98,10 @@ export function ComprehensiveHealthTemplate({
   )
   
   const [isAutoCalculate, setIsAutoCalculate] = useState(false)
-  const [showDownloadModal, setShowDownloadModal] = useState(false)
-  const [downloadFormat, setDownloadFormat] = useState<string>('pdf')
-  const [pendingFormat, setPendingFormat] = useState<string | null>(null)
+  const [downloadMode, setDownloadMode] = useState<'choose' | 'auto' | 'custom'>('choose')
   const [historyOpen, setHistoryOpen] = useState(false)
   const [historyItems, setHistoryItems] = useState<Array<{ at: string; values: any[]; primary?: string; score?: number }>>([])
   const lastHistoryHashRef = useRef<string | null>(null)
-  const [downloadOptions, setDownloadOptions] = useState<DownloadOptions>({
-    includeSummary: true,
-    includeMetrics: true,
-    includeRecommendations: true,
-    includeChart: true,
-    includeDetailedBreakdown: true
-  })
-
   useEffect(() => {
     if (isAutoCalculate && values.length > 0) {
       calculate()
@@ -203,7 +185,7 @@ export function ComprehensiveHealthTemplate({
       const data: (string | number)[][] = []
 
       // Add primary metric if available
-      if (downloadOptions.includeSummary && result.primaryMetric) {
+      if (result.primaryMetric) {
         data.push([
           result.primaryMetric.label,
           `${result.primaryMetric.value}${result.primaryMetric.unit ? ' ' + result.primaryMetric.unit : ''}`,
@@ -212,7 +194,7 @@ export function ComprehensiveHealthTemplate({
       }
 
       // Add all metrics if available
-      if (downloadOptions.includeMetrics && result.metrics) {
+      if (result.metrics) {
         result.metrics.forEach(metric => {
           data.push([
             metric.label,
@@ -223,14 +205,14 @@ export function ComprehensiveHealthTemplate({
       }
 
       // Add detailed breakdown if available
-      if (downloadOptions.includeDetailedBreakdown && result.detailedBreakdown) {
+      if (result.detailedBreakdown) {
         Object.entries(result.detailedBreakdown).forEach(([key, value]) => {
           data.push([key, String(value), 'Info'])
         })
       }
 
       // Add recommendations if available
-      if (downloadOptions.includeRecommendations && result.recommendations) {
+      if (result.recommendations) {
         data.push(['--- Recommendations ---', '', ''])
         result.recommendations.forEach((rec, idx) => {
           data.push([
@@ -274,8 +256,7 @@ export function ComprehensiveHealthTemplate({
         metadata
       )
       
-      setShowDownloadModal(false)
-      setPendingFormat(null)
+      setDownloadMode('choose')
     } catch (error) {
       console.error('Download error:', error)
       toast.error('Failed to generate report')
@@ -283,15 +264,14 @@ export function ComprehensiveHealthTemplate({
   }
 
   const initiateDownload = (format: string) => {
-    setDownloadFormat(format)
-    setPendingFormat(format)
-    setShowDownloadModal(true)
-  }
-
-  const confirmDownload = () => {
-    if (pendingFormat) {
-      handleDownload(pendingFormat)
+    if (!result) {
+      toast.error("Please calculate first before downloading")
+      return
     }
+    toast.promise(
+      handleDownload(format),
+      { loading: 'Generating report…', success: 'Downloaded!', error: 'Failed to generate report' }
+    )
   }
 
   const handlePrint = () => {
@@ -393,191 +373,190 @@ export function ComprehensiveHealthTemplate({
           </p>
         </div>
 
-        {/* Toolbar Section */}
-        <div className="mb-6 print:hidden">
-          <Card className="border-border/50">
-            <CardContent className="p-4">
-              <div className="flex items-center gap-2 flex-wrap justify-between">
-                <div className="flex items-center gap-2">
-                  <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-border/50">
-                    <Activity className="h-4 w-4 text-primary" />
-                    <Label htmlFor="toolbar-auto-calculate" className="text-sm cursor-pointer mb-0">
-                      Auto Calculate
-                    </Label>
-                    <Switch
-                      id="toolbar-auto-calculate"
-                      checked={isAutoCalculate}
-                      onCheckedChange={setIsAutoCalculate}
-                      className="ml-2"
-                    />
-                  </div>
-                </div>
-                
-                <div className="flex items-center gap-1">
-                  {onClear && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={onClear}
-                      title="Clear all inputs"
-                      className="h-9 w-9 p-0"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  )}
-                  
-                  {onClear && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={onClear}
-                      title="Reset calculator"
-                      className="h-9 w-9 p-0"
-                    >
-                      <RotateCcw className="h-4 w-4" />
-                    </Button>
-                  )}
-                  
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => {
-                      toast.success("Added to favorites!")
-                    }}
-                    title="Add to favorites"
-                    className="h-9 w-9 p-0"
-                  >
-                    <Star className="h-4 w-4" />
-                  </Button>
-                  
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => {
-                      toast.success("Bookmarked!")
-                    }}
-                    title="Bookmark this calculator"
-                    className="h-9 w-9 p-0"
-                  >
-                    <Bookmark className="h-4 w-4" />
-                  </Button>
-                  
-                  {toolId && (
-                    <DropdownMenu open={historyOpen} onOpenChange={setHistoryOpen}>
-                      <DropdownMenuTrigger asChild>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          title="View calculation history"
-                          className="h-9 w-9 p-0"
-                        >
-                          <Clock className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end" className="w-[360px] p-3">
-                        <DropdownMenuLabel className="px-2 py-1.5 text-sm font-bold">Recent Calculations</DropdownMenuLabel>
-                        <DropdownMenuSeparator />
-                        {historyItems.length === 0 ? (
-                          <div className="px-2 py-3 text-sm text-muted-foreground">No history yet</div>
-                        ) : (
-                          <div className="max-h-[320px] overflow-y-auto">
-                            {historyItems.map((item, idx) => (
-                              <DropdownMenuItem
-                                key={`${item.at}-${idx}`}
-                                className="rounded-lg cursor-pointer flex items-center justify-between gap-3"
-                                onClick={() => copyHistoryItem(item)}
-                              >
-                                <div className="min-w-0">
-                                  <div className="text-sm font-medium truncate">{new Date(item.at).toLocaleString()}</div>
-                                  <div className="text-xs text-muted-foreground truncate">
-                                    {item.primary ?? "Click to copy"}
-                                  </div>
-                                </div>
-                                <Copy className="h-4 w-4" />
-                              </DropdownMenuItem>
-                            ))}
-                          </div>
-                        )}
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem
-                          className="rounded-lg cursor-pointer text-destructive focus:text-destructive flex items-center gap-2"
-                          onClick={clearHistory}
-                          disabled={historyItems.length === 0}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                          <span>Clear history</span>
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  )}
-                  
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={handleShare}
-                    title="Share this calculator"
-                    className="h-9 w-9 p-0"
-                  >
-                    <Share2 className="h-4 w-4" />
-                  </Button>
-                  
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={handlePrint}
-                    title="Print results"
-                    className="h-9 w-9 p-0"
-                  >
-                    <Printer className="h-4 w-4" />
-                  </Button>
-                  
-                  <Button
-                    variant="destructive"
-                    size="sm"
-                    onClick={() => initiateDownload('pdf')}
-                    title="Download as PDF"
-                    className="h-9 px-4"
-                    disabled={!result}
-                  >
-                    <FileText className="h-4 w-4 mr-1" />
-                    PDF
-                  </Button>
-                  
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        title="Download in other formats"
-                        className="h-9 px-4"
-                        disabled={!result}
-                      >
-                        <Download className="h-4 w-4 mr-1" />
-                        Download
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem onClick={() => initiateDownload('pdf')}>
-                        <FileText className="h-4 w-4 mr-2" /> PDF Report
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => initiateDownload('excel')}>
-                        <FileSpreadsheet className="h-4 w-4 mr-2" /> Excel
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => initiateDownload('png')}>
-                        <FileImage className="h-4 w-4 mr-2" /> Image (PNG)
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => initiateDownload('csv')}>
-                        <FileCode className="h-4 w-4 mr-2" /> CSV
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => initiateDownload('json')}>
-                        <FileJson className="h-4 w-4 mr-2" /> JSON
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </div>
+        {/* Action Toolbar */}
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mb-8 p-2 rounded-2xl bg-secondary/10 border border-border/50 print:hidden">
+
+          {/* Left: Auto Calculate Toggle */}
+          <div className="flex items-center gap-3 px-4 py-2 rounded-xl w-full sm:w-auto justify-between sm:justify-start">
+            <div className="flex items-center gap-2.5">
+              <div className={cn("p-2 rounded-lg transition-colors", isAutoCalculate ? "bg-yellow-500/10 text-yellow-600" : "bg-muted text-muted-foreground")}>
+                {isAutoCalculate ? <Zap className="h-4 w-4 fill-current" /> : <ZapOff className="h-4 w-4" />}
               </div>
-            </CardContent>
-          </Card>
+              <Label htmlFor="health-auto-calculate" className="text-sm font-medium cursor-pointer select-none">
+                Auto Calculate
+              </Label>
+            </div>
+            <Switch
+              id="health-auto-calculate"
+              checked={isAutoCalculate}
+              onCheckedChange={setIsAutoCalculate}
+              className="data-[state=checked]:bg-yellow-500 ml-2"
+            />
+          </div>
+
+          {/* Right: Action Buttons */}
+          <div className="flex items-center gap-2 w-full sm:w-auto justify-end px-2">
+            {onClear && (
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={onClear}
+                className="h-10 w-10 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-xl transition-colors"
+                title="Clear inputs"
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            )}
+            {onClear && (
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={onClear}
+                className="h-10 w-10 text-muted-foreground hover:text-emerald-600 hover:bg-emerald-600/10 rounded-xl transition-colors"
+                title="Reset"
+              >
+                <RefreshCw className="h-4 w-4" />
+              </Button>
+            )}
+
+            <div className="h-6 w-px bg-border mx-1 hidden sm:block" />
+
+            {toolId && (
+              <DropdownMenu open={historyOpen} onOpenChange={setHistoryOpen}>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="icon" className="h-10 w-10 text-muted-foreground hover:text-primary hover:bg-primary/10 rounded-xl" title="History">
+                    <History className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-[360px] p-3">
+                  <DropdownMenuLabel className="px-2 py-1.5 text-sm font-bold">Recent Calculations</DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  {historyItems.length === 0 ? (
+                    <div className="px-2 py-3 text-sm text-muted-foreground">No history yet. Run a calculation to save.</div>
+                  ) : (
+                    <div className="max-h-[320px] overflow-y-auto">
+                      {historyItems.map((item, idx) => (
+                        <DropdownMenuItem key={`${item.at}-${idx}`} className="rounded-lg cursor-pointer flex items-center justify-between gap-3" onClick={() => copyHistoryItem(item)}>
+                          <div className="min-w-0">
+                            <div className="text-sm font-medium truncate">{new Date(item.at).toLocaleString()}</div>
+                            <div className="text-xs text-muted-foreground truncate">{item.primary ?? 'Click to copy'}</div>
+                          </div>
+                          <Copy className="h-4 w-4" />
+                        </DropdownMenuItem>
+                      ))}
+                    </div>
+                  )}
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem className="rounded-lg cursor-pointer text-destructive focus:text-destructive flex items-center gap-2" onClick={clearHistory} disabled={historyItems.length === 0}>
+                    <Trash2 className="h-4 w-4" /><span>Clear history</span>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
+
+            <Button variant="ghost" size="icon" onClick={handleShare} className="h-10 w-10 text-muted-foreground hover:text-primary hover:bg-primary/10 rounded-xl" title="Share">
+              <Share2 className="h-4 w-4" />
+            </Button>
+            <Button variant="ghost" size="icon" onClick={handlePrint} className="h-10 w-10 text-muted-foreground hover:text-primary hover:bg-primary/10 rounded-xl" title="Print">
+              <Printer className="h-4 w-4" />
+            </Button>
+
+            {result && (
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="default"
+                  size="sm"
+                  onClick={() => initiateDownload('pdf')}
+                  className="hidden md:flex gap-2 bg-red-600 hover:bg-red-700 text-white shadow-lg shadow-red-500/20 rounded-xl px-4 h-10"
+                >
+                  <FileType className="h-4 w-4" />
+                  <span>PDF</span>
+                </Button>
+
+                <DropdownMenu onOpenChange={(open) => { if (!open) setDownloadMode('choose') }}>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline" size="sm" className="gap-2 border-primary/20 hover:bg-primary/5 hover:text-primary shadow-sm rounded-xl px-4 h-10" onClick={() => setDownloadMode('choose')}>
+                      <Download className="h-4 w-4" />
+                      <span className="hidden sm:inline">Download</span>
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-[min(480px,calc(100vw-1rem))] p-3 sm:p-4 max-h-[85vh] overflow-y-auto">
+
+                    {/* Step 1: Choose mode */}
+                    {downloadMode === 'choose' && (
+                      <div className="space-y-3">
+                        <DropdownMenuLabel className="px-1 py-1 text-base font-bold">How would you like to download?</DropdownMenuLabel>
+                        <DropdownMenuSeparator />
+                        <button onClick={() => setDownloadMode('auto')} className="w-full text-left flex items-start gap-3 p-3 rounded-xl border border-yellow-200 dark:border-yellow-800 bg-yellow-50 dark:bg-yellow-950/30 hover:bg-yellow-100 dark:hover:bg-yellow-900/40 transition-colors">
+                          <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-yellow-400/20">
+                            <Zap className="h-5 w-5 text-yellow-600 dark:text-yellow-400" />
+                          </span>
+                          <div>
+                            <p className="font-semibold text-sm text-yellow-900 dark:text-yellow-200">Auto Download</p>
+                            <p className="text-xs text-yellow-700 dark:text-yellow-400 mt-0.5">Pick a format and download instantly — no extra steps.</p>
+                          </div>
+                        </button>
+                        <button onClick={() => setDownloadMode('custom')} className="w-full text-left flex items-start gap-3 p-3 rounded-xl border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-950/30 hover:bg-blue-100 dark:hover:bg-blue-900/40 transition-colors">
+                          <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-blue-400/20">
+                            <Settings className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                          </span>
+                          <div>
+                            <p className="font-semibold text-sm text-blue-900 dark:text-blue-200">Custom Download</p>
+                            <p className="text-xs text-blue-700 dark:text-blue-400 mt-0.5">Choose colours, font size, row range, watermark and more.</p>
+                          </div>
+                        </button>
+                      </div>
+                    )}
+
+                    {/* Step 2: Format list */}
+                    {(downloadMode === 'auto' || downloadMode === 'custom') && (
+                      <>
+                        <div className="flex items-center gap-2 mb-3">
+                          <button onClick={() => setDownloadMode('choose')} className="flex items-center justify-center h-7 w-7 rounded-lg hover:bg-muted transition-colors text-muted-foreground hover:text-foreground" title="Back">←</button>
+                          <span className={cn("inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold", downloadMode === 'auto' ? "bg-yellow-100 dark:bg-yellow-900/40 text-yellow-800 dark:text-yellow-300" : "bg-blue-100 dark:bg-blue-900/40 text-blue-800 dark:text-blue-300")}>
+                            {downloadMode === 'auto' ? <><Zap className="h-3 w-3" /> Auto — click to download</> : <><Settings className="h-3 w-3" /> Custom — click to customise</>}
+                          </span>
+                        </div>
+                        <DropdownMenuSeparator className="mb-3" />
+                        <div className="grid grid-cols-1 min-[380px]:grid-cols-2 gap-x-4 gap-y-2">
+                          <div className="space-y-4">
+                            <div className="space-y-1">
+                              <div className="px-2 text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">Basic &amp; Standard</div>
+                              <DropdownMenuItem onClick={() => initiateDownload('csv')} className="rounded-lg cursor-pointer"><FileText className="mr-2 h-4 w-4 text-green-600" /><span>CSV</span></DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => initiateDownload('excel')} className="rounded-lg cursor-pointer"><FileSpreadsheet className="mr-2 h-4 w-4 text-green-600" /><span>Excel (.xlsx)</span></DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => initiateDownload('pdf')} className="rounded-lg cursor-pointer"><FileType className="mr-2 h-4 w-4 text-red-500" /><span>PDF Document</span></DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => initiateDownload('json')} className="rounded-lg cursor-pointer"><FileJson className="mr-2 h-4 w-4 text-yellow-500" /><span>JSON Data</span></DropdownMenuItem>
+                            </div>
+                            <div className="space-y-1">
+                              <div className="px-2 text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">Images</div>
+                              <DropdownMenuItem onClick={() => initiateDownload('png')} className="rounded-lg cursor-pointer"><Image className="mr-2 h-4 w-4 text-purple-500" /><span>PNG Image</span></DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => initiateDownload('jpg')} className="rounded-lg cursor-pointer"><FileImage className="mr-2 h-4 w-4 text-orange-500" /><span>JPG Image</span></DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => initiateDownload('svg')} className="rounded-lg cursor-pointer"><Code className="mr-2 h-4 w-4 text-pink-500" /><span>SVG Vector</span></DropdownMenuItem>
+                            </div>
+                          </div>
+                          <div className="space-y-4">
+                            <div className="space-y-1">
+                              <div className="px-2 text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">Advanced Docs</div>
+                              <DropdownMenuItem onClick={() => initiateDownload('html')} className="rounded-lg cursor-pointer"><Code className="mr-2 h-4 w-4 text-orange-600" /><span>HTML Report</span></DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => initiateDownload('docx')} className="rounded-lg cursor-pointer"><FileText className="mr-2 h-4 w-4 text-blue-700" /><span>Word (.docx)</span></DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => initiateDownload('pptx')} className="rounded-lg cursor-pointer"><Presentation className="mr-2 h-4 w-4 text-orange-700" /><span>PowerPoint</span></DropdownMenuItem>
+                            </div>
+                            <div className="space-y-1">
+                              <div className="px-2 text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">Developer</div>
+                              <DropdownMenuItem onClick={() => initiateDownload('xml')} className="rounded-lg cursor-pointer"><FileCode className="mr-2 h-4 w-4 text-gray-500" /><span>XML Data</span></DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => initiateDownload('api')} className="rounded-lg cursor-pointer"><LinkIcon className="mr-2 h-4 w-4 text-indigo-500" /><span>API Link</span></DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => initiateDownload('sql')} className="rounded-lg cursor-pointer"><Database className="mr-2 h-4 w-4 text-blue-400" /><span>SQL Insert</span></DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => initiateDownload('zip')} className="rounded-lg cursor-pointer"><FileArchive className="mr-2 h-4 w-4 text-gray-600" /><span>ZIP Bundle</span></DropdownMenuItem>
+                            </div>
+                          </div>
+                        </div>
+                      </>
+                    )}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Main Content */}
@@ -806,102 +785,6 @@ export function ComprehensiveHealthTemplate({
           </div>
         )}
       </div>
-
-      {/* Enhanced Download Modal */}
-      <CustomDownloadModal
-        open={showDownloadModal}
-        onClose={() => setShowDownloadModal(false)}
-        data={{
-          ...result,
-          title: displayTitle,
-          description: displayDescription,
-          category: categoryName,
-          timestamp: new Date().toISOString(),
-        }}
-        title={displayTitle}
-        format={downloadFormat}
-      />
-
-      {/* Legacy Download Options Modal - Hidden */}
-      {false && showDownloadModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-card border border-border rounded-2xl p-6 max-w-md w-full shadow-2xl scale-100 animate-in zoom-in-95 duration-200">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold flex items-center gap-2">
-                <Download className="h-5 w-5 text-primary" />
-                Download Options
-              </h3>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setShowDownloadModal(false)}
-              >
-                <X className="h-4 w-4" />
-              </Button>
-            </div>
-            
-            <div className="space-y-4 mb-6">
-              <div className="flex items-center justify-between p-3 rounded-lg hover:bg-muted/50 transition-colors">
-                <Label htmlFor="include-summary" className="text-sm cursor-pointer font-medium">
-                  Include Summary
-                </Label>
-                <Switch
-                  id="include-summary"
-                  checked={downloadOptions.includeSummary}
-                  onCheckedChange={(checked) =>
-                    setDownloadOptions(prev => ({ ...prev, includeSummary: checked }))
-                  }
-                />
-              </div>
-              <div className="flex items-center justify-between p-3 rounded-lg hover:bg-muted/50 transition-colors">
-                <Label htmlFor="include-metrics" className="text-sm cursor-pointer font-medium">
-                  Include Detailed Metrics
-                </Label>
-                <Switch
-                  id="include-metrics"
-                  checked={downloadOptions.includeMetrics}
-                  onCheckedChange={(checked) =>
-                    setDownloadOptions(prev => ({ ...prev, includeMetrics: checked }))
-                  }
-                />
-              </div>
-              <div className="flex items-center justify-between p-3 rounded-lg hover:bg-muted/50 transition-colors">
-                <Label htmlFor="include-recs" className="text-sm cursor-pointer font-medium">
-                  Include Recommendations
-                </Label>
-                <Switch
-                  id="include-recs"
-                  checked={downloadOptions.includeRecommendations}
-                  onCheckedChange={(checked) =>
-                    setDownloadOptions(prev => ({ ...prev, includeRecommendations: checked }))
-                  }
-                />
-              </div>
-              <div className="flex items-center justify-between p-3 rounded-lg hover:bg-muted/50 transition-colors">
-                <Label htmlFor="include-risks" className="text-sm cursor-pointer font-medium">
-                  Include Risk Analysis
-                </Label>
-                <Switch
-                  id="include-risks"
-                  checked={downloadOptions.includeDetailedBreakdown}
-                  onCheckedChange={(checked) =>
-                    setDownloadOptions(prev => ({ ...prev, includeDetailedBreakdown: checked }))
-                  }
-                />
-              </div>
-            </div>
-
-            <div className="flex gap-3">
-              <Button variant="outline" className="flex-1" onClick={() => setShowDownloadModal(false)}>
-                Cancel
-              </Button>
-              <Button className="flex-1" onClick={confirmDownload}>
-                Download {pendingFormat?.toUpperCase()}
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   )
 }

@@ -38,7 +38,3 @@ export * from './categories/misc/MiscCalculators'
 
 // Health
 export * from './categories/health/HealthCalculators'
-export * from './categories/health/ExampleAdvancedHealthCalculator'
-
-// Templates
-export * from './templates/AdvancedHealthCalculatorTemplate'

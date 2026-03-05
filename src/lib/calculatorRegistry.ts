@@ -1868,9 +1868,91 @@ export const calculatorComponents: Record<string, any> = {
   'post-bariatric-protein': dynamic(() => import('@/components/calculators/categories/health/NutritionSupplementCalculators').then(m => ({ default: m.PostBariatricProteinCalculator }))),
   'toddler-calorie': dynamic(() => import('@/components/calculators/categories/health/NutritionSupplementCalculators').then(m => ({ default: m.ToddlerCalorieCalculator }))),
 
-  ...Object.fromEntries(genericHealthToolIds.map((id) => [id, genericHealthTool])),
-  ...Object.fromEntries(genericMathToolIds.map((id) => [id, genericMathTool])),
-  ...Object.fromEntries(genericDateTimeToolIds.map((id) => [id, genericDateTimeTool])),
+  // NOTE: Do NOT re-spread genericHealthToolIds here — it would override all specific implementations above.
+  // The initial spread at the top of this object already covers all generic fallbacks.
+
+  // ─── Health - Exercise & Performance ───────────────────────────────────────
+  'one-rep-max': dynamic(() => import('@/components/calculators/categories/health/AdvancedExerciseCalculators').then(m => ({ default: m.OneRepMaxCalculator }))),
+  'vo2-max-calculator': dynamic(() => import('@/components/calculators/categories/health/AdvancedExerciseCalculators').then(m => ({ default: m.VO2MaxCalculator }))),
+  'max-heart-rate-calculator': dynamic(() => import('@/components/calculators/categories/health/AdvancedExerciseCalculators').then(m => ({ default: m.MaxHeartRateCalculator }))),
+  'karvonen-formula': dynamic(() => import('@/components/calculators/categories/health/AdvancedExerciseCalculators').then(m => ({ default: m.KarvonenFormulaCalculator }))),
+  'pace-calculator': dynamic(() => import('@/components/calculators/categories/health/AdvancedExerciseCalculators').then(m => ({ default: m.PaceCalculator }))),
+  'calories-burned-walking': dynamic(() => import('@/components/calculators/categories/health/AdvancedExerciseCalculators').then(m => ({ default: m.CaloriesBurnedWalkingCalculator }))),
+  'calories-burned-running': dynamic(() => import('@/components/calculators/categories/health/AdvancedExerciseCalculators').then(m => ({ default: m.CaloriesBurnedRunningCalculator }))),
+  'swimming-calories-burned': dynamic(() => import('@/components/calculators/categories/health/AdvancedExerciseCalculators').then(m => ({ default: m.SwimmingCaloriesCalculator }))),
+  'hiit-workout-calculator': dynamic(() => import('@/components/calculators/categories/health/AdvancedExerciseCalculators').then(m => ({ default: m.HIITCaloriesCalculator }))),
+  'steps-to-calories': dynamic(() => import('@/components/calculators/categories/health/AdvancedExerciseCalculators').then(m => ({ default: m.StepsToCaloriesCalculator }))),
+  'bench-press-calculator': dynamic(() => import('@/components/calculators/categories/health/AdvancedExerciseCalculators').then(m => ({ default: m.BenchPressCalculator }))),
+  'squat-strength-calculator': dynamic(() => import('@/components/calculators/categories/health/AdvancedExerciseCalculators').then(m => ({ default: m.SquatStrengthCalculator }))),
+  'deadlift-calculator': dynamic(() => import('@/components/calculators/categories/health/AdvancedExerciseCalculators').then(m => ({ default: m.DeadliftCalculator }))),
+  'wilks-score-calculator': dynamic(() => import('@/components/calculators/categories/health/AdvancedExerciseCalculators').then(m => ({ default: m.WilksScoreCalculator }))),
+  'training-zone-calculator': dynamic(() => import('@/components/calculators/categories/health/AdvancedExerciseCalculators').then(m => ({ default: m.TrainingZoneCalculator }))),
+  'met-calculator': dynamic(() => import('@/components/calculators/categories/health/AdvancedExerciseCalculators').then(m => ({ default: m.METCalculator }))),
+  'strength-volume-calculator': dynamic(() => import('@/components/calculators/categories/health/AdvancedExerciseCalculators').then(m => ({ default: m.StrengthVolumeCalculator }))),
+  'power-to-weight': dynamic(() => import('@/components/calculators/categories/health/AdvancedExerciseCalculators').then(m => ({ default: m.PowerToWeightCalculator }))),
+  'ftp-calculator': dynamic(() => import('@/components/calculators/categories/health/AdvancedExerciseCalculators').then(m => ({ default: m.FTPCalculator }))),
+  'maf-180': dynamic(() => import('@/components/calculators/categories/health/AdvancedExerciseCalculators').then(m => ({ default: m.MAF180Calculator }))),
+  'cooper-test-calculator': dynamic(() => import('@/components/calculators/categories/health/AdvancedExerciseCalculators').then(m => ({ default: m.CooperTestCalculator }))),
+
+  // ─── Health - Heart & Vital Health ─────────────────────────────────────────
+  'blood-pressure-calculator': dynamic(() => import('@/components/calculators/categories/health/AdvancedHeartHealthCalculators').then(m => ({ default: m.BloodPressureCalculator }))),
+  'resting-heart-rate': dynamic(() => import('@/components/calculators/categories/health/AdvancedHeartHealthCalculators').then(m => ({ default: m.RestingHeartRateCalculator }))),
+  'pulse-pressure-calculator': dynamic(() => import('@/components/calculators/categories/health/AdvancedHeartHealthCalculators').then(m => ({ default: m.PulsePressureCalculator }))),
+  'mean-arterial-pressure': dynamic(() => import('@/components/calculators/categories/health/AdvancedHeartHealthCalculators').then(m => ({ default: m.MeanArterialPressureCalculator }))),
+  'cardiac-output-calculator': dynamic(() => import('@/components/calculators/categories/health/AdvancedHeartHealthCalculators').then(m => ({ default: m.CardiacOutputCalculator }))),
+  'heart-age-calculator': dynamic(() => import('@/components/calculators/categories/health/AdvancedHeartHealthCalculators').then(m => ({ default: m.HeartAgeCalculator }))),
+  'blood-volume-calculator': dynamic(() => import('@/components/calculators/categories/health/AdvancedHeartHealthCalculators').then(m => ({ default: m.BloodVolumeCalculator }))),
+  'oxygen-saturation-interpreter': dynamic(() => import('@/components/calculators/categories/health/AdvancedHeartHealthCalculators').then(m => ({ default: m.OxygenSaturationInterpreter }))),
+  'qt-interval-calculator': dynamic(() => import('@/components/calculators/categories/health/AdvancedHeartHealthCalculators').then(m => ({ default: m.QTIntervalCalculator }))),
+  'stroke-volume-calculator': dynamic(() => import('@/components/calculators/categories/health/AdvancedHeartHealthCalculators').then(m => ({ default: m.StrokeVolumeCalculator }))),
+  'ankle-brachial-index': dynamic(() => import('@/components/calculators/categories/health/AdvancedHeartHealthCalculators').then(m => ({ default: m.AnkleBrachialIndexCalculator }))),
+  'pao2-fio2-ratio': dynamic(() => import('@/components/calculators/categories/health/AdvancedHeartHealthCalculators').then(m => ({ default: m.PaO2FiO2RatioCalculator }))),
+  'tidal-volume-calculator': dynamic(() => import('@/components/calculators/categories/health/AdvancedHeartHealthCalculators').then(m => ({ default: m.TidalVolumeCalculator }))),
+
+  // ─── Health - Weight & Goal Management ─────────────────────────────────────
+  'weight-loss-calculator': dynamic(() => import('@/components/calculators/categories/health/AdvancedWeightGoalCalculators').then(m => ({ default: m.WeightLossCalculator }))),
+  'calorie-deficit-calculator': dynamic(() => import('@/components/calculators/categories/health/AdvancedWeightGoalCalculators').then(m => ({ default: m.CalorieDeficitCalculator }))),
+  'goal-weight-date': dynamic(() => import('@/components/calculators/categories/health/AdvancedWeightGoalCalculators').then(m => ({ default: m.GoalWeightDateCalculator }))),
+  'bulk-cut-calculator': dynamic(() => import('@/components/calculators/categories/health/AdvancedWeightGoalCalculators').then(m => ({ default: m.BulkCutCalculator }))),
+  'neat-calculator': dynamic(() => import('@/components/calculators/categories/health/AdvancedWeightGoalCalculators').then(m => ({ default: m.NEATCalculator }))),
+  'thermic-effect-food': dynamic(() => import('@/components/calculators/categories/health/AdvancedWeightGoalCalculators').then(m => ({ default: m.ThermicEffectFoodCalculator }))),
+  'ffmi-natural-limit': dynamic(() => import('@/components/calculators/categories/health/AdvancedWeightGoalCalculators').then(m => ({ default: m.FFMICalculator }))),
+  'body-fat-goal-planner': dynamic(() => import('@/components/calculators/categories/health/AdvancedWeightGoalCalculators').then(m => ({ default: m.IdealBodyFatCalculator }))),
+  'maintenance-calorie-calculator': dynamic(() => import('@/components/calculators/categories/health/AdvancedWeightGoalCalculators').then(m => ({ default: m.MaintenanceCalorieCalculator }))),
+
+  // ─── Health - Pregnancy & Fertility ────────────────────────────────────────
+  'due-date-calculator': dynamic(() => import('@/components/calculators/categories/health/AdvancedPregnancyCalculators').then(m => ({ default: m.DueDateCalculator }))),
+  'ovulation-calculator': dynamic(() => import('@/components/calculators/categories/health/AdvancedPregnancyCalculators').then(m => ({ default: m.OvulationCalculator }))),
+  'gestational-age-calculator': dynamic(() => import('@/components/calculators/categories/health/AdvancedPregnancyCalculators').then(m => ({ default: m.GestationalAgeCalculator }))),
+  'pregnancy-weight-gain': dynamic(() => import('@/components/calculators/categories/health/AdvancedPregnancyCalculators').then(m => ({ default: m.PregnancyWeightGainCalculator }))),
+  'baby-height': dynamic(() => import('@/components/calculators/categories/health/AdvancedPregnancyCalculators').then(m => ({ default: m.BabyHeightPredictor }))),
+  'hcg-doubling-calculator': dynamic(() => import('@/components/calculators/categories/health/AdvancedPregnancyCalculators').then(m => ({ default: m.HCGDoublingCalculator }))),
+  'baby-blood-type': dynamic(() => import('@/components/calculators/categories/health/AdvancedPregnancyCalculators').then(m => ({ default: m.BabyBloodTypeCalculator }))),
+  'conception-calculator': dynamic(() => import('@/components/calculators/categories/health/AdvancedPregnancyCalculators').then(m => ({ default: m.ConceptionDateCalculator }))),
+  'conception-date-estimator': dynamic(() => import('@/components/calculators/categories/health/AdvancedPregnancyCalculators').then(m => ({ default: m.ConceptionDateCalculator }))),
+  'ovulation-tracker': dynamic(() => import('@/components/calculators/categories/health/AdvancedPregnancyCalculators').then(m => ({ default: m.OvulationCalculator }))),
+
+  // ─── Health - Sleep & Lifestyle ────────────────────────────────────────────
+  'sleep-cycle-calculator': dynamic(() => import('@/components/calculators/categories/health/AdvancedSleepCalculators').then(m => ({ default: m.SleepCycleCalculator }))),
+  'sleep-cycle-optimizer': dynamic(() => import('@/components/calculators/categories/health/AdvancedSleepCalculators').then(m => ({ default: m.SleepCycleCalculator }))),
+  'sleep-debt-calculator': dynamic(() => import('@/components/calculators/categories/health/AdvancedSleepCalculators').then(m => ({ default: m.SleepDebtCalculator }))),
+  'sleep-efficiency-calculator': dynamic(() => import('@/components/calculators/categories/health/AdvancedSleepCalculators').then(m => ({ default: m.SleepEfficiencyCalculator }))),
+  'caffeine-calculator': dynamic(() => import('@/components/calculators/categories/health/AdvancedSleepCalculators').then(m => ({ default: m.CaffeineDailyTrackerCalculator }))),
+  'jet-lag-calculator': dynamic(() => import('@/components/calculators/categories/health/AdvancedSleepCalculators').then(m => ({ default: m.JetLagCalculator }))),
+  'jet-lag-recovery': dynamic(() => import('@/components/calculators/categories/health/AdvancedSleepCalculators').then(m => ({ default: m.JetLagCalculator }))),
+  'smoke-free-calculator': dynamic(() => import('@/components/calculators/categories/health/AdvancedSleepCalculators').then(m => ({ default: m.SmokeFreeCalculator }))),
+  'nap-calculator': dynamic(() => import('@/components/calculators/categories/health/AdvancedSleepCalculators').then(m => ({ default: m.NapCalculator }))),
+  'alcohol-calorie-calculator': dynamic(() => import('@/components/calculators/categories/health/AdvancedSleepCalculators').then(m => ({ default: m.AlcoholCalorieCalculator }))),
+
+  // ─── Health - Disease Risk & Prevention ────────────────────────────────────
+  'diabetes-risk-calculator': dynamic(() => import('@/components/calculators/categories/health/AdvancedDiseaseRiskCalculators').then(m => ({ default: m.DiabetesRiskCalculator }))),
+  'cholesterol-ratio-calculator': dynamic(() => import('@/components/calculators/categories/health/AdvancedDiseaseRiskCalculators').then(m => ({ default: m.CholesterolRatioCalculator }))),
+  'ldl-cholesterol-calculator': dynamic(() => import('@/components/calculators/categories/health/AdvancedDiseaseRiskCalculators').then(m => ({ default: m.LDLCholesterolCalculator }))),
+  'insulin-resistance-homa-ir': dynamic(() => import('@/components/calculators/categories/health/AdvancedDiseaseRiskCalculators').then(m => ({ default: m.HOMAIRCalculator }))),
+  'egfr-calculator': dynamic(() => import('@/components/calculators/categories/health/AdvancedDiseaseRiskCalculators').then(m => ({ default: m.eGFRCalculator }))),
+  'creatinine-clearance': dynamic(() => import('@/components/calculators/categories/health/AdvancedDiseaseRiskCalculators').then(m => ({ default: m.CrClCalculator }))),
+  'anion-gap-calculator': dynamic(() => import('@/components/calculators/categories/health/AdvancedDiseaseRiskCalculators').then(m => ({ default: m.AnionGapCalculator }))),
+  'corrected-calcium': dynamic(() => import('@/components/calculators/categories/health/AdvancedDiseaseRiskCalculators').then(m => ({ default: m.CorrectedCalciumCalculator }))),
 
   // Math Calculators
   'basic-calculator': dynamic(() => import('@/components/calculators/categories/math/BasicArithmetic').then(m => ({ default: m.BasicCalculator }))),
@@ -2422,6 +2504,68 @@ export const calculatorComponents: Record<string, any> = {
   'decimal-calculator': AdvancedDecimalCalculator,
   'scientific-notation-calculator': AdvancedScientificNotationCalculator,
   'significant-figures-calculator': AdvancedSignificantFiguresCalculator,
+
+  // --- Missing IDs (were in toolsData but not registered → caused 404) ---
+
+  // Health aliases (generic fallbacks for IDs not covered by specific implementations)
+  'pregnancy-week-tracker': genericHealthTool,
+  // Note: conception-date-estimator, ovulation-tracker, sleep-cycle-optimizer, jet-lag-recovery
+  // are now covered by specific implementations above (registered with real calculators)
+
+  // Physics / Scientific
+  'physics-scientific-notation': genericPhysicsTool,
+  'physics-midpoint': genericPhysicsTool,
+  'physics-matrix': genericPhysicsTool,
+  'physics-determinant': genericPhysicsTool,
+  'physics-vector': genericPhysicsTool,
+  'physics-eigenvalue': genericPhysicsTool,
+  'physics-complex-number': genericPhysicsTool,
+  'electrical-power': genericPhysicsTool,
+  'gibbs-energy-chemistry': genericPhysicsTool,
+  'enthalpy-chemistry': genericPhysicsTool,
+  'entropy-change-calculator': genericPhysicsTool,
+
+  // Construction aliases
+  'construction-area': genericConstructionTool,
+  'construction-volume': genericConstructionTool,
+  'transformer-sizing': genericConstructionTool,
+  'ac-btu-calculator': genericConstructionTool,
+
+  // Business aliases
+  'business-discount': genericBusinessTool,
+  'business-runway': genericBusinessTool,
+  'business-freelance-tax': genericBusinessTool,
+  'business-labor-cost': genericBusinessTool,
+  'business-material-cost': genericBusinessTool,
+  'inventory-turnover-ratio': genericBusinessTool,
+  'ar-turnover-ratio': genericBusinessTool,
+  'ap-turnover-ratio': genericBusinessTool,
+  'business-dividend-yield': genericBusinessTool,
+  'business-dividend-payout': genericBusinessTool,
+  'business-sustainable-growth': genericBusinessTool,
+  'inventory-efficiency': genericBusinessTool,
+  'operational-asset-turnover': genericBusinessTool,
+
+  // Everyday aliases
+  'shopping-discount': genericEverydayTool,
+  'travel-distance': genericEverydayTool,
+  'home-room-size': genericEverydayTool,
+  'home-paint': genericEverydayTool,
+  'home-tile': genericEverydayTool,
+  'home-wallpaper': genericEverydayTool,
+
+  // Education aliases
+  'percentage-to-grade': genericEducationTool,
+
+  // DateTime aliases
+  'time-duration-calculator': genericDateTimeTool,
+  'fiscal-quarter': genericDateTimeTool,
+  'sobriety-tracker': genericDateTimeTool,
+  'smoke-free-tracker': genericDateTimeTool,
+  'fitness-streak-tracker': genericDateTimeTool,
+
+  // Technology aliases
+  'password-entropy-calculator': genericTechnologyTool,
 }
 
 export const implementedCalculatorIds = new Set(Object.keys(calculatorComponents))

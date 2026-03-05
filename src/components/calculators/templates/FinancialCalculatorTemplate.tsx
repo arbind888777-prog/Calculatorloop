@@ -129,6 +129,7 @@ export function FinancialCalculatorTemplate({
     calculateLabel === 'Calculate' ? getDictString(dict, 'common.calculate', 'Calculate') : calculateLabel
   
   const [isAutoCalculate, setIsAutoCalculate] = useState(defaultAutoCalculate)
+  const [downloadMode, setDownloadMode] = useState<'choose' | 'auto' | 'custom'>('choose')
   const [showDownloadModal, setShowDownloadModal] = useState(false)
   const [pendingFormat, setPendingFormat] = useState<string | null>(null)
   const [isFavorite, setIsFavorite] = useState(false)
@@ -377,8 +378,23 @@ export function FinancialCalculatorTemplate({
   }
 
   const initiateDownload = (format: string) => {
-    setPendingFormat(format)
-    setShowDownloadModal(true)
+    if (downloadMode === 'auto') {
+      const run = async () => {
+        if (onDownload) {
+          onDownload(format, downloadOptions)
+        } else {
+          await fallbackOnDownload(format)
+        }
+      }
+      toast.promise(run(), {
+        loading: `Preparing ${format.toUpperCase()} download...`,
+        success: `${format.toUpperCase()} downloaded successfully!`,
+        error: 'Download failed. Please try again.',
+      })
+    } else {
+      setPendingFormat(format)
+      setShowDownloadModal(true)
+    }
   }
 
   const confirmDownload = () => {
@@ -632,121 +648,180 @@ export function FinancialCalculatorTemplate({
                     <FileType className="h-4 w-4" />
                     <span>PDF</span>
                   </Button>
-                  
-                  <DropdownMenu>
+
+                  <DropdownMenu onOpenChange={(open) => { if (!open) setDownloadMode('choose') }}>
                     <DropdownMenuTrigger asChild>
                       <Button 
                         variant="outline" 
                         size="sm" 
                         className="gap-2 border-primary/20 hover:bg-primary/5 hover:text-primary shadow-sm rounded-xl px-4 h-10"
+                        onClick={() => setDownloadMode('choose')}
                       >
                         <Download className="h-4 w-4" />
                         <span className="hidden sm:inline">Download</span>
                       </Button>
                     </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="w-[500px] p-4 max-h-[80vh] overflow-y-auto [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-border [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-thumb]:bg-muted-foreground/50">
-                    <DropdownMenuLabel className="px-2 py-1.5 text-lg font-bold border-b mb-3">Download Options</DropdownMenuLabel>
-                    
-                    <div className="grid grid-cols-2 gap-x-6 gap-y-2">
-                      {/* Left Column */}
-                      <div className="space-y-4">
-                        {/* Basic Section */}
-                        <div className="space-y-1">
-                          <div className="px-2 text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">Basic & Standard</div>
-                          <DropdownMenuItem onClick={() => initiateDownload('csv')} className="rounded-lg cursor-pointer">
-                            <FileText className="mr-2 h-4 w-4 text-green-600" />
-                            <span>CSV (Excel)</span>
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => initiateDownload('excel')} className="rounded-lg cursor-pointer">
-                            <FileSpreadsheet className="mr-2 h-4 w-4 text-green-600" />
-                            <span>Excel (.xlsx)</span>
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => initiateDownload('pdf')} className="rounded-lg cursor-pointer">
-                            <FileType className="mr-2 h-4 w-4 text-red-500" />
-                            <span>PDF Document</span>
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => initiateDownload('json')} className="rounded-lg cursor-pointer">
-                            <FileJson className="mr-2 h-4 w-4 text-yellow-500" />
-                            <span>JSON Data</span>
-                          </DropdownMenuItem>
-                        </div>
+                  <DropdownMenuContent align="end" className="w-[min(480px,calc(100vw-1rem))] p-3 sm:p-4 max-h-[85vh] overflow-y-auto [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-border [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-thumb]:bg-muted-foreground/50">
 
-                        {/* Images Section */}
-                        <div className="space-y-1">
-                          <div className="px-2 text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">Images & Visuals</div>
-                          <DropdownMenuItem onClick={() => initiateDownload('png')} className="rounded-lg cursor-pointer">
-                            <Image className="mr-2 h-4 w-4 text-purple-500" />
-                            <span>PNG Image</span>
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => initiateDownload('jpg')} className="rounded-lg cursor-pointer">
-                            <FileImage className="mr-2 h-4 w-4 text-orange-500" />
-                            <span>JPG Image</span>
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => initiateDownload('svg')} className="rounded-lg cursor-pointer">
-                            <Code className="mr-2 h-4 w-4 text-pink-500" />
-                            <span>SVG Vector</span>
-                          </DropdownMenuItem>
-                        </div>
+                    {/* ── STEP 1 : Choose mode ──────────────────────────────── */}
+                    {downloadMode === 'choose' && (
+                      <div className="space-y-3">
+                        <DropdownMenuLabel className="px-1 py-1 text-base font-bold">
+                          How would you like to download?
+                        </DropdownMenuLabel>
+                        <DropdownMenuSeparator />
+
+                        {/* Auto card */}
+                        <button
+                          onClick={() => setDownloadMode('auto')}
+                          className="w-full text-left flex items-start gap-3 p-3 rounded-xl border border-yellow-200 dark:border-yellow-800 bg-yellow-50 dark:bg-yellow-950/30 hover:bg-yellow-100 dark:hover:bg-yellow-900/40 transition-colors"
+                        >
+                          <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-yellow-400/20 dark:bg-yellow-400/10">
+                            <Zap className="h-5 w-5 text-yellow-600 dark:text-yellow-400" />
+                          </span>
+                          <div>
+                            <p className="font-semibold text-sm text-yellow-900 dark:text-yellow-200">Auto Download</p>
+                            <p className="text-xs text-yellow-700 dark:text-yellow-400 mt-0.5">Pick a format and download instantly — no extra steps.</p>
+                          </div>
+                        </button>
+
+                        {/* Custom card */}
+                        <button
+                          onClick={() => setDownloadMode('custom')}
+                          className="w-full text-left flex items-start gap-3 p-3 rounded-xl border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-950/30 hover:bg-blue-100 dark:hover:bg-blue-900/40 transition-colors"
+                        >
+                          <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-blue-400/20 dark:bg-blue-400/10">
+                            <Settings className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                          </span>
+                          <div>
+                            <p className="font-semibold text-sm text-blue-900 dark:text-blue-200">Custom Download</p>
+                            <p className="text-xs text-blue-700 dark:text-blue-400 mt-0.5">Choose colours, font size, row range, watermark and more.</p>
+                          </div>
+                        </button>
                       </div>
+                    )}
 
-                      {/* Right Column */}
-                      <div className="space-y-4">
-                        {/* Advanced Section */}
-                        <div className="space-y-1">
-                          <div className="px-2 text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">Advanced Docs</div>
-                          <DropdownMenuItem onClick={() => initiateDownload('html')} className="rounded-lg cursor-pointer">
-                            <Code className="mr-2 h-4 w-4 text-orange-600" />
-                            <span>HTML Report</span>
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => initiateDownload('docx')} className="rounded-lg cursor-pointer">
-                            <FileText className="mr-2 h-4 w-4 text-blue-700" />
-                            <span>Word (.docx)</span>
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => initiateDownload('pptx')} className="rounded-lg cursor-pointer">
-                            <Presentation className="mr-2 h-4 w-4 text-orange-700" />
-                            <span>PowerPoint (.pptx)</span>
-                          </DropdownMenuItem>
+                    {/* ── STEP 2 : Format list (auto or custom) ─────────────── */}
+                    {(downloadMode === 'auto' || downloadMode === 'custom') && (
+                      <>
+                        {/* Header with back button */}
+                        <div className="flex items-center gap-2 mb-3">
+                          <button
+                            onClick={() => setDownloadMode('choose')}
+                            className="flex items-center justify-center h-7 w-7 rounded-lg hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
+                            title="Back"
+                          >
+                            ←
+                          </button>
+                          <span className={cn(
+                            "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold",
+                            downloadMode === 'auto'
+                              ? "bg-yellow-100 dark:bg-yellow-900/40 text-yellow-800 dark:text-yellow-300"
+                              : "bg-blue-100 dark:bg-blue-900/40 text-blue-800 dark:text-blue-300"
+                          )}>
+                            {downloadMode === 'auto'
+                              ? <><Zap className="h-3 w-3" /> Auto — click to download</>
+                              : <><Settings className="h-3 w-3" /> Custom — click to customise</>
+                            }
+                          </span>
                         </div>
+                        <DropdownMenuSeparator className="mb-3" />
 
-                        {/* Developer Section */}
-                        <div className="space-y-1">
-                          <div className="px-2 text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">Developer Data</div>
-                          <DropdownMenuItem onClick={() => initiateDownload('xml')} className="rounded-lg cursor-pointer">
-                            <FileCode className="mr-2 h-4 w-4 text-gray-500" />
-                            <span>XML Data</span>
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => initiateDownload('api')} className="rounded-lg cursor-pointer">
-                            <LinkIcon className="mr-2 h-4 w-4 text-indigo-500" />
-                            <span>API Link</span>
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => initiateDownload('sql')} className="rounded-lg cursor-pointer">
-                            <Database className="mr-2 h-4 w-4 text-blue-400" />
-                            <span>SQL Insert</span>
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => initiateDownload('sqlite')} className="rounded-lg cursor-pointer">
-                            <Database className="mr-2 h-4 w-4 text-cyan-600" />
-                            <span>SQLite DB</span>
-                          </DropdownMenuItem>
-                        </div>
+                        <div className="grid grid-cols-1 min-[380px]:grid-cols-2 gap-x-4 gap-y-2">
+                          {/* Left Column */}
+                          <div className="space-y-4">
+                            <div className="space-y-1">
+                              <div className="px-2 text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">Basic & Standard</div>
+                              <DropdownMenuItem onClick={() => initiateDownload('csv')} className="rounded-lg cursor-pointer">
+                                <FileText className="mr-2 h-4 w-4 text-green-600" />
+                                <span>CSV (Excel)</span>
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => initiateDownload('excel')} className="rounded-lg cursor-pointer">
+                                <FileSpreadsheet className="mr-2 h-4 w-4 text-green-600" />
+                                <span>Excel (.xlsx)</span>
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => initiateDownload('pdf')} className="rounded-lg cursor-pointer">
+                                <FileType className="mr-2 h-4 w-4 text-red-500" />
+                                <span>PDF Document</span>
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => initiateDownload('json')} className="rounded-lg cursor-pointer">
+                                <FileJson className="mr-2 h-4 w-4 text-yellow-500" />
+                                <span>JSON Data</span>
+                              </DropdownMenuItem>
+                            </div>
+                            <div className="space-y-1">
+                              <div className="px-2 text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">Images & Visuals</div>
+                              <DropdownMenuItem onClick={() => initiateDownload('png')} className="rounded-lg cursor-pointer">
+                                <Image className="mr-2 h-4 w-4 text-purple-500" />
+                                <span>PNG Image</span>
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => initiateDownload('jpg')} className="rounded-lg cursor-pointer">
+                                <FileImage className="mr-2 h-4 w-4 text-orange-500" />
+                                <span>JPG Image</span>
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => initiateDownload('svg')} className="rounded-lg cursor-pointer">
+                                <Code className="mr-2 h-4 w-4 text-pink-500" />
+                                <span>SVG Vector</span>
+                              </DropdownMenuItem>
+                            </div>
+                          </div>
 
-                        {/* Security Section */}
-                        <div className="space-y-1">
-                          <div className="px-2 text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">Archives & Security</div>
-                          <DropdownMenuItem onClick={() => initiateDownload('zip')} className="rounded-lg cursor-pointer">
-                            <FileArchive className="mr-2 h-4 w-4 text-yellow-600" />
-                            <span>ZIP Archive</span>
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => initiateDownload('pdf-encrypted')} className="rounded-lg cursor-pointer">
-                            <Lock className="mr-2 h-4 w-4 text-red-600" />
-                            <span>Encrypted PDF</span>
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => initiateDownload('zip-encrypted')} className="rounded-lg cursor-pointer">
-                            <FileKey className="mr-2 h-4 w-4 text-slate-600" />
-                            <span>Password ZIP</span>
-                          </DropdownMenuItem>
+                          {/* Right Column */}
+                          <div className="space-y-4">
+                            <div className="space-y-1">
+                              <div className="px-2 text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">Advanced Docs</div>
+                              <DropdownMenuItem onClick={() => initiateDownload('html')} className="rounded-lg cursor-pointer">
+                                <Code className="mr-2 h-4 w-4 text-orange-600" />
+                                <span>HTML Report</span>
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => initiateDownload('docx')} className="rounded-lg cursor-pointer">
+                                <FileText className="mr-2 h-4 w-4 text-blue-700" />
+                                <span>Word (.docx)</span>
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => initiateDownload('pptx')} className="rounded-lg cursor-pointer">
+                                <Presentation className="mr-2 h-4 w-4 text-orange-700" />
+                                <span>PowerPoint (.pptx)</span>
+                              </DropdownMenuItem>
+                            </div>
+                            <div className="space-y-1">
+                              <div className="px-2 text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">Developer Data</div>
+                              <DropdownMenuItem onClick={() => initiateDownload('xml')} className="rounded-lg cursor-pointer">
+                                <FileCode className="mr-2 h-4 w-4 text-gray-500" />
+                                <span>XML Data</span>
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => initiateDownload('api')} className="rounded-lg cursor-pointer">
+                                <LinkIcon className="mr-2 h-4 w-4 text-indigo-500" />
+                                <span>API Link</span>
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => initiateDownload('sql')} className="rounded-lg cursor-pointer">
+                                <Database className="mr-2 h-4 w-4 text-blue-400" />
+                                <span>SQL Insert</span>
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => initiateDownload('sqlite')} className="rounded-lg cursor-pointer">
+                                <Database className="mr-2 h-4 w-4 text-cyan-600" />
+                                <span>SQLite DB</span>
+                              </DropdownMenuItem>
+                            </div>
+                            <div className="space-y-1">
+                              <div className="px-2 text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">Archives & Security</div>
+                              <DropdownMenuItem onClick={() => initiateDownload('zip')} className="rounded-lg cursor-pointer">
+                                <FileArchive className="mr-2 h-4 w-4 text-yellow-600" />
+                                <span>ZIP Archive</span>
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => initiateDownload('pdf-encrypted')} className="rounded-lg cursor-pointer">
+                                <Lock className="mr-2 h-4 w-4 text-red-600" />
+                                <span>Encrypted PDF</span>
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => initiateDownload('zip-encrypted')} className="rounded-lg cursor-pointer">
+                                <FileKey className="mr-2 h-4 w-4 text-slate-600" />
+                                <span>Password ZIP</span>
+                              </DropdownMenuItem>
+                            </div>
+                          </div>
                         </div>
-                      </div>
-                    </div>
+                      </>
+                    )}
+
                   </DropdownMenuContent>
                 </DropdownMenu>
                 </div>

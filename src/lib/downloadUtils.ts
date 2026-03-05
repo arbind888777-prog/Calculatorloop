@@ -46,11 +46,67 @@ export const generateReport = async (
       case 'excel': {
         const ExcelJS = await import('exceljs')
         const workbook = new ExcelJS.Workbook()
-        const worksheet = workbook.addWorksheet('Report')
+        workbook.creator = 'Calculator Loop'
+        workbook.created = new Date()
 
-        worksheet.addRow(headers)
-        data.forEach((row) => worksheet.addRow(row))
-        worksheet.getRow(1).font = { bold: true }
+        // Summary sheet
+        if (metadata && Object.keys(metadata).length > 0) {
+          const summarySheet = workbook.addWorksheet('Summary')
+          summarySheet.columns = [
+            { key: 'key', width: 30 },
+            { key: 'value', width: 40 },
+          ]
+          summarySheet.addRow(['Parameter', 'Value'])
+          const summaryHeader = summarySheet.getRow(1)
+          summaryHeader.font = { bold: true, color: { argb: 'FFFFFFFF' }, size: 12 }
+          summaryHeader.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF2980B9' } }
+          summaryHeader.alignment = { horizontal: 'center' }
+          summaryHeader.height = 22
+          Object.entries(metadata).forEach(([k, v], i) => {
+            const row = summarySheet.addRow([k, String(v)])
+            if (i % 2 === 0) {
+              row.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF0F4F8' } }
+            }
+            row.getCell(2).font = { bold: true }
+          })
+        }
+
+        // Data sheet
+        const worksheet = workbook.addWorksheet('Data')
+        worksheet.columns = headers.map((h) => ({
+          header: h,
+          key: h,
+          width: Math.max(h.length + 4, 14),
+        }))
+
+        // Style header row
+        const headerRow = worksheet.getRow(1)
+        headerRow.font = { bold: true, color: { argb: 'FFFFFFFF' }, size: 11 }
+        headerRow.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1A56DB' } }
+        headerRow.alignment = { horizontal: 'center', vertical: 'middle' }
+        headerRow.height = 24
+
+        data.forEach((row, i) => {
+          const addedRow = worksheet.addRow(row)
+          if (i % 2 === 0) {
+            addedRow.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF5F8FF' } }
+          }
+          addedRow.eachCell((cell) => {
+            cell.border = {
+              bottom: { style: 'thin', color: { argb: 'FFE5E7EB' } },
+            }
+          })
+        })
+
+        // Auto-fit columns based on content
+        worksheet.columns.forEach((col) => {
+          let maxLength = (col.header as string)?.length ?? 10
+          col.eachCell?.({ includeEmpty: false }, (cell) => {
+            const len = String(cell.value ?? '').length
+            if (len > maxLength) maxLength = len
+          })
+          col.width = Math.min(maxLength + 2, 50)
+        })
 
         const buffer = await workbook.xlsx.writeBuffer()
         const mime = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
@@ -63,49 +119,117 @@ export const generateReport = async (
       case 'pdf-encrypted': {
         const jsPDF = (await import('jspdf')).default
         const autoTable = (await import('jspdf-autotable')).default
-        
-        const doc = new jsPDF()
-        
-        if (format === 'pdf-encrypted') {
-           doc.setTextColor(255, 0, 0)
-           doc.text("CONFIDENTIAL - ENCRYPTED", 105, 10, { align: 'center' })
-           doc.setTextColor(0, 0, 0)
-        }
 
-        doc.setFontSize(16)
-        doc.text(title, 14, 15)
-        
-        let startY = 25
-        if (metadata) {
-          doc.setFontSize(10)
-          Object.entries(metadata).forEach(([key, value]) => {
-            // Strip Rupee symbol for PDF compatibility if needed, or ensure font supports it.
-            // jsPDF default font doesn't support ₹. We replace it with 'Rs. '
-            const safeValue = String(value).replace(/₹/g, 'Rs. ')
-            doc.text(`${key}: ${safeValue}`, 14, startY)
-            startY += 5
-          })
+        const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' })
+        const pageW = doc.internal.pageSize.getWidth()
+        const pageH = doc.internal.pageSize.getHeight()
+        const safe = (s: any) => String(s ?? '').replace(/\u20B9/g, 'Rs.').replace(/[\u0900-\u097F]+/g, '').trim()
+
+        // --- Header banner ---
+        doc.setFillColor(26, 86, 219)
+        doc.rect(0, 0, pageW, 26, 'F')
+        doc.setFontSize(17)
+        doc.setFont('helvetica', 'bold')
+        doc.setTextColor(255, 255, 255)
+        doc.text(safe(title), 14, 12)
+        doc.setFontSize(8)
+        doc.setFont('helvetica', 'normal')
+        doc.text(`Generated: ${new Date().toLocaleString()}  |  Calculator Loop`, 14, 20)
+        if (format === 'pdf-encrypted') {
+          doc.setTextColor(255, 220, 0)
+          doc.setFontSize(8)
+          doc.setFont('helvetica', 'bold')
+          doc.text('CONFIDENTIAL', pageW - 14, 12, { align: 'right' })
+        }
+        doc.setTextColor(0, 0, 0)
+
+        let startY = 34
+
+        // --- Metadata / Input Summary ---
+        if (metadata && Object.keys(metadata).length > 0) {
+          doc.setFontSize(11)
+          doc.setFont('helvetica', 'bold')
+          doc.setTextColor(26, 86, 219)
+          doc.text('Input Summary', 14, startY)
+          startY += 4
+          doc.setDrawColor(26, 86, 219)
+          doc.setLineWidth(0.4)
+          doc.line(14, startY, pageW - 14, startY)
           startY += 5
+
+          const metaEntries = Object.entries(metadata)
+          const colW = (pageW - 28) / 2
+          doc.setFontSize(9)
+          doc.setFont('helvetica', 'normal')
+          doc.setTextColor(60, 60, 60)
+          metaEntries.forEach(([k, v], i) => {
+            const col = i % 2
+            const row = Math.floor(i / 2)
+            const x = 14 + col * colW
+            const y = startY + row * 7
+            if (col === 0 && i % 2 === 0 && row % 2 === 0) {
+              doc.setFillColor(240, 244, 255)
+              doc.rect(14, y - 4, pageW - 28, 7, 'F')
+            }
+            doc.setFont('helvetica', 'bold')
+            doc.text(`${safe(k)}:`, x + 1, y)
+            doc.setFont('helvetica', 'normal')
+            doc.text(safe(v), x + colW * 0.45, y)
+          })
+          startY += Math.ceil(metaEntries.length / 2) * 7 + 6
         }
 
-        // Sanitize data for PDF (remove ₹ symbol)
-        const safeData = data.map(row => row.map(cell => String(cell).replace(/₹/g, 'Rs. ')))
-        const safeHeaders = headers.map(h => h.replace(/₹/g, 'Rs. '))
+        // --- Data table ---
+        if (data.length > 0) {
+          doc.setFontSize(11)
+          doc.setFont('helvetica', 'bold')
+          doc.setTextColor(26, 86, 219)
+          doc.text('Data', 14, startY)
+          startY += 4
+          doc.setDrawColor(26, 86, 219)
+          doc.setLineWidth(0.4)
+          doc.line(14, startY, pageW - 14, startY)
+          startY += 3
 
-        autoTable(doc, {
-          head: [safeHeaders],
-          body: safeData,
-          startY: startY,
-          theme: 'grid',
-          styles: { fontSize: 8, cellPadding: 2 },
-          headStyles: { fillColor: [41, 128, 185], textColor: 255 },
-          alternateRowStyles: { fillColor: [245, 245, 245] }
-        })
-        
+          const safeData = data.map(row => row.map(cell => safe(cell)))
+          const safeHeaders = headers.map(h => safe(h))
+
+          autoTable(doc, {
+            head: [safeHeaders],
+            body: safeData,
+            startY: startY,
+            theme: 'grid',
+            styles: { fontSize: 8, cellPadding: 2.5, textColor: [40, 40, 40], lineColor: [220, 220, 220], lineWidth: 0.2 },
+            headStyles: { fillColor: [26, 86, 219], textColor: 255, fontStyle: 'bold', fontSize: 9, cellPadding: 3 },
+            alternateRowStyles: { fillColor: [245, 248, 255] },
+            columnStyles: {},
+            margin: { left: 14, right: 14 },
+            didDrawPage: (d: any) => {
+              // Footer on every page
+              const pg = (doc as any).internal.getCurrentPageInfo().pageNumber
+              const total = (doc as any).internal.getNumberOfPages()
+              doc.setFontSize(7)
+              doc.setTextColor(150, 150, 150)
+              doc.setFont('helvetica', 'normal')
+              doc.text('Calculator Loop — calculatorloop.com', 14, pageH - 6)
+              doc.text(`Page ${pg} of ${total}`, pageW - 14, pageH - 6, { align: 'right' })
+            },
+          } as any)
+        }
+
         if (format === 'pdf-encrypted') {
-             doc.save(`${fullFileName}_secure.pdf`)
+          // Diagonal watermark on each page
+          const totalPgs = (doc as any).internal.getNumberOfPages()
+          for (let p = 1; p <= totalPgs; p++) {
+            doc.setPage(p)
+            doc.setFontSize(50)
+            doc.setTextColor(230, 230, 230)
+            doc.setFont('helvetica', 'bold')
+            doc.text('CONFIDENTIAL', pageW / 2, pageH / 2, { align: 'center', angle: 45 })
+          }
+          doc.save(`${fullFileName}_secure.pdf`)
         } else {
-             doc.save(`${fullFileName}.pdf`)
+          doc.save(`${fullFileName}.pdf`)
         }
         break
       }
@@ -117,35 +241,64 @@ export const generateReport = async (
       }
 
       case 'html': {
-        const htmlContent = `
-          <!DOCTYPE html>
-          <html>
-          <head>
-            <title>${title}</title>
-            <style>
-              body { font-family: system-ui, sans-serif; padding: 20px; }
-              table { border-collapse: collapse; width: 100%; margin-top: 20px; }
-              th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
-              th { background-color: #f4f4f4; }
-              .metadata { margin-bottom: 20px; padding: 10px; background: #f9f9f9; border-radius: 4px; }
-            </style>
-          </head>
-          <body>
-            <h1>${title}</h1>
-            <div class="metadata">
-              ${metadata ? Object.entries(metadata).map(([k, v]) => `<p><strong>${k}:</strong> ${v}</p>`).join('') : ''}
-            </div>
-            <table>
-              <thead>
-                <tr>${headers.map(h => `<th>${h}</th>`).join('')}</tr>
-              </thead>
-              <tbody>
-                ${data.map(row => `<tr>${row.map(cell => `<td>${cell}</td>`).join('')}</tr>`).join('')}
-              </tbody>
-            </table>
-          </body>
-          </html>
-        `
+        const htmlContent = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>${title} | Calculator Loop</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: system-ui, -apple-system, sans-serif; background: #f0f4ff; color: #1e293b; min-height: 100vh; }
+    .header { background: linear-gradient(135deg, #1a56db 0%, #7c3aed 100%); color: white; padding: 28px 32px; }
+    .header h1 { font-size: 1.75rem; font-weight: 700; letter-spacing: -0.025em; }
+    .header .subtitle { font-size: 0.85rem; opacity: 0.8; margin-top: 4px; }
+    .container { max-width: 960px; margin: 32px auto; padding: 0 16px; }
+    .card { background: white; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.08), 0 4px 16px rgba(0,0,0,0.06); margin-bottom: 24px; overflow: hidden; }
+    .card-title { font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: #1a56db; padding: 14px 20px 10px; border-bottom: 1px solid #e5e7eb; display: flex; align-items: center; gap: 8px; }
+    .card-title::before { content: ''; display: inline-block; width: 3px; height: 14px; background: #1a56db; border-radius: 2px; }
+    .meta-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 0; padding: 0; }
+    .meta-item { padding: 12px 20px; border-bottom: 1px solid #f1f5f9; display: flex; flex-direction: column; gap: 2px; }
+    .meta-item:nth-child(odd) { background: #f8faff; }
+    .meta-key { font-size: 0.72rem; color: #64748b; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; }
+    .meta-val { font-size: 0.92rem; font-weight: 700; color: #1e293b; }
+    table { width: 100%; border-collapse: collapse; font-size: 0.855rem; }
+    thead tr { background: #1a56db; color: white; }
+    thead th { padding: 11px 14px; text-align: left; font-weight: 600; font-size: 0.8rem; letter-spacing: 0.03em; white-space: nowrap; }
+    tbody tr:nth-child(even) { background: #f5f8ff; }
+    tbody td { padding: 9px 14px; border-bottom: 1px solid #e5e7eb; color: #374151; }
+    tbody tr:hover td { background: #eef2ff; }
+    .footer { text-align: center; padding: 24px; font-size: 0.78rem; color: #94a3b8; }
+    @media print { body { background: white; } .card { box-shadow: none; border: 1px solid #e5e7eb; } }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>${title}</h1>
+    <div class="subtitle">Generated on ${new Date().toLocaleString()} &nbsp;|&nbsp; Calculator Loop</div>
+  </div>
+  <div class="container">
+    ${metadata && Object.keys(metadata).length > 0 ? `
+    <div class="card">
+      <div class="card-title">Input Summary</div>
+      <div class="meta-grid">
+        ${Object.entries(metadata).map(([k, v]) => `<div class="meta-item"><span class="meta-key">${k}</span><span class="meta-val">${v}</span></div>`).join('')}
+      </div>
+    </div>` : ''}
+    ${data.length > 0 ? `
+    <div class="card">
+      <div class="card-title">Report Data</div>
+      <div style="overflow-x:auto">
+        <table>
+          <thead><tr>${headers.map(h => `<th>${h}</th>`).join('')}</tr></thead>
+          <tbody>${data.map(row => `<tr>${row.map(cell => `<td>${cell}</td>`).join('')}</tr>`).join('')}</tbody>
+        </table>
+      </div>
+    </div>` : ''}
+  </div>
+  <div class="footer">Calculator Loop &mdash; calculatorloop.com</div>
+</body>
+</html>`
         downloadFile(htmlContent, `${fullFileName}.html`, 'text/html')
         break
       }

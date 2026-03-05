@@ -279,7 +279,7 @@ export function CustomDownloadModal({ open, onClose, data, title, format }: Cust
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[550px] max-h-[90vh] overflow-y-auto">
+      <DialogContent className="w-[calc(100vw-1rem)] sm:max-w-[560px] max-h-[92vh] overflow-y-auto rounded-2xl p-4 sm:p-6">
         <DialogHeader>
           <div className="flex items-center justify-between">
             <DialogTitle className="text-xl font-bold">🎨 Customize Download</DialogTitle>
@@ -672,14 +672,14 @@ export function CustomDownloadModal({ open, onClose, data, title, format }: Cust
           </div>
         </div>
 
-        <DialogFooter className="flex gap-2">
-          <Button variant="outline" onClick={onClose} disabled={isDownloading}>
+        <DialogFooter className="flex flex-col-reverse sm:flex-row gap-2 pt-2">
+          <Button variant="outline" onClick={onClose} disabled={isDownloading} className="w-full sm:w-auto">
             Cancel
           </Button>
           <Button 
             onClick={handleDownload} 
             disabled={isDownloading} 
-            className="bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-600 hover:to-blue-600 text-white font-semibold shadow-lg"
+            className="w-full sm:w-auto bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-600 hover:to-blue-600 text-white font-semibold shadow-lg"
           >
             <Download className="mr-2 h-4 w-4" />
             {isDownloading ? 'Downloading...' : `Download ${format === 'custom' ? selectedFormat.toUpperCase() : format.toUpperCase()}`}
