@@ -92,6 +92,7 @@ const baseToolsData: Record<string, Category> = {
           { id: 'waist-circumference', title: 'Waist Circumference Calculator', description: 'Track waist circumference for health monitoring.', icon: 'fas fa-ruler-horizontal', action: 'Calculate Now' },
           { id: 'neck-circumference', title: 'Neck Circumference Calculator', description: 'Measure and track neck circumference.', icon: 'fas fa-ruler', action: 'Calculate Now' },
           { id: 'hip-circumference', title: 'Hip Circumference Calculator', description: 'Measure and track hip circumference.', icon: 'fas fa-ruler', action: 'Calculate Now' },
+          { id: 'integrated-health-dashboard', title: 'Integrated Health Dashboard', description: 'Unified health score combining all 10 body measurements into one analytics dashboard.', icon: 'fas fa-heartbeat', action: 'View Dashboard' },
           { id: 'body-adiposity-index', title: 'Body Adiposity Index (BAI) Calculator', description: 'Estimate body fat using Body Adiposity Index.', icon: 'fas fa-percentage', action: 'Calculate Now' },
           { id: 'ponderal-index', title: 'Ponderal Index Calculator', description: 'Calculate Ponderal Index for body composition assessment.', icon: 'fas fa-balance-scale', action: 'Calculate Now' },
           { id: 'a-body-shape-index-absi', title: 'A Body Shape Index (ABSI) Calculator', description: 'Calculate ABSI using waist, height, and weight.', icon: 'fas fa-chart-line', action: 'Calculate Now' },

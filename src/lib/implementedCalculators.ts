@@ -85,6 +85,7 @@ export const implementedCalculatorList = [
   'waist-circumference',
   'neck-circumference',
   'hip-circumference',
+  'integrated-health-dashboard',
   'body-adiposity-index',
   'ponderal-index',
   'a-body-shape-index-absi',

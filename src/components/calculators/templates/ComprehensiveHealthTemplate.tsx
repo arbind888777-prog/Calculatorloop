@@ -27,6 +27,7 @@ import { getMergedTranslations } from "@/lib/translations"
 import { localizeToolMeta } from "@/lib/toolLocalization"
 import { generateReport } from "@/lib/downloadUtils"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { CustomDownloadModal } from "@/components/CustomDownloadModal"
 
 export interface HealthMetric {
   label: string
@@ -99,6 +100,8 @@ export function ComprehensiveHealthTemplate({
   
   const [isAutoCalculate, setIsAutoCalculate] = useState(false)
   const [downloadMode, setDownloadMode] = useState<'choose' | 'auto' | 'custom'>('choose')
+  const [showCustomModal, setShowCustomModal] = useState(false)
+  const [customModalFormat, setCustomModalFormat] = useState('pdf')
   const [historyOpen, setHistoryOpen] = useState(false)
   const [historyItems, setHistoryItems] = useState<Array<{ at: string; values: any[]; primary?: string; score?: number }>>([])
   const lastHistoryHashRef = useRef<string | null>(null)
@@ -260,6 +263,15 @@ export function ComprehensiveHealthTemplate({
     } catch (error) {
       console.error('Download error:', error)
       toast.error('Failed to generate report')
+    }
+  }
+
+  const clickFormat = (format: string) => {
+    if (downloadMode === 'custom') {
+      setCustomModalFormat(format)
+      setShowCustomModal(true)
+    } else {
+      initiateDownload(format)
     }
   }
 
@@ -522,31 +534,31 @@ export function ComprehensiveHealthTemplate({
                           <div className="space-y-4">
                             <div className="space-y-1">
                               <div className="px-2 text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">Basic &amp; Standard</div>
-                              <DropdownMenuItem onClick={() => initiateDownload('csv')} className="rounded-lg cursor-pointer"><FileText className="mr-2 h-4 w-4 text-green-600" /><span>CSV</span></DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => initiateDownload('excel')} className="rounded-lg cursor-pointer"><FileSpreadsheet className="mr-2 h-4 w-4 text-green-600" /><span>Excel (.xlsx)</span></DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => initiateDownload('pdf')} className="rounded-lg cursor-pointer"><FileType className="mr-2 h-4 w-4 text-red-500" /><span>PDF Document</span></DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => initiateDownload('json')} className="rounded-lg cursor-pointer"><FileJson className="mr-2 h-4 w-4 text-yellow-500" /><span>JSON Data</span></DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => clickFormat('csv')} className="rounded-lg cursor-pointer"><FileText className="mr-2 h-4 w-4 text-green-600" /><span>CSV</span></DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => clickFormat('excel')} className="rounded-lg cursor-pointer"><FileSpreadsheet className="mr-2 h-4 w-4 text-green-600" /><span>Excel (.xlsx)</span></DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => clickFormat('pdf')} className="rounded-lg cursor-pointer"><FileType className="mr-2 h-4 w-4 text-red-500" /><span>PDF Document</span></DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => clickFormat('json')} className="rounded-lg cursor-pointer"><FileJson className="mr-2 h-4 w-4 text-yellow-500" /><span>JSON Data</span></DropdownMenuItem>
                             </div>
                             <div className="space-y-1">
                               <div className="px-2 text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">Images</div>
-                              <DropdownMenuItem onClick={() => initiateDownload('png')} className="rounded-lg cursor-pointer"><Image className="mr-2 h-4 w-4 text-purple-500" /><span>PNG Image</span></DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => initiateDownload('jpg')} className="rounded-lg cursor-pointer"><FileImage className="mr-2 h-4 w-4 text-orange-500" /><span>JPG Image</span></DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => initiateDownload('svg')} className="rounded-lg cursor-pointer"><Code className="mr-2 h-4 w-4 text-pink-500" /><span>SVG Vector</span></DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => clickFormat('png')} className="rounded-lg cursor-pointer"><Image className="mr-2 h-4 w-4 text-purple-500" /><span>PNG Image</span></DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => clickFormat('jpg')} className="rounded-lg cursor-pointer"><FileImage className="mr-2 h-4 w-4 text-orange-500" /><span>JPG Image</span></DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => clickFormat('svg')} className="rounded-lg cursor-pointer"><Code className="mr-2 h-4 w-4 text-pink-500" /><span>SVG Vector</span></DropdownMenuItem>
                             </div>
                           </div>
                           <div className="space-y-4">
                             <div className="space-y-1">
                               <div className="px-2 text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">Advanced Docs</div>
-                              <DropdownMenuItem onClick={() => initiateDownload('html')} className="rounded-lg cursor-pointer"><Code className="mr-2 h-4 w-4 text-orange-600" /><span>HTML Report</span></DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => initiateDownload('docx')} className="rounded-lg cursor-pointer"><FileText className="mr-2 h-4 w-4 text-blue-700" /><span>Word (.docx)</span></DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => initiateDownload('pptx')} className="rounded-lg cursor-pointer"><Presentation className="mr-2 h-4 w-4 text-orange-700" /><span>PowerPoint</span></DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => clickFormat('html')} className="rounded-lg cursor-pointer"><Code className="mr-2 h-4 w-4 text-orange-600" /><span>HTML Report</span></DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => clickFormat('docx')} className="rounded-lg cursor-pointer"><FileText className="mr-2 h-4 w-4 text-blue-700" /><span>Word (.docx)</span></DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => clickFormat('pptx')} className="rounded-lg cursor-pointer"><Presentation className="mr-2 h-4 w-4 text-orange-700" /><span>PowerPoint</span></DropdownMenuItem>
                             </div>
                             <div className="space-y-1">
                               <div className="px-2 text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">Developer</div>
-                              <DropdownMenuItem onClick={() => initiateDownload('xml')} className="rounded-lg cursor-pointer"><FileCode className="mr-2 h-4 w-4 text-gray-500" /><span>XML Data</span></DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => initiateDownload('api')} className="rounded-lg cursor-pointer"><LinkIcon className="mr-2 h-4 w-4 text-indigo-500" /><span>API Link</span></DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => initiateDownload('sql')} className="rounded-lg cursor-pointer"><Database className="mr-2 h-4 w-4 text-blue-400" /><span>SQL Insert</span></DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => initiateDownload('zip')} className="rounded-lg cursor-pointer"><FileArchive className="mr-2 h-4 w-4 text-gray-600" /><span>ZIP Bundle</span></DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => clickFormat('xml')} className="rounded-lg cursor-pointer"><FileCode className="mr-2 h-4 w-4 text-gray-500" /><span>XML Data</span></DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => clickFormat('api')} className="rounded-lg cursor-pointer"><LinkIcon className="mr-2 h-4 w-4 text-indigo-500" /><span>API Link</span></DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => clickFormat('sql')} className="rounded-lg cursor-pointer"><Database className="mr-2 h-4 w-4 text-blue-400" /><span>SQL Insert</span></DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => clickFormat('zip')} className="rounded-lg cursor-pointer"><FileArchive className="mr-2 h-4 w-4 text-gray-600" /><span>ZIP Bundle</span></DropdownMenuItem>
                             </div>
                           </div>
                         </div>
@@ -785,6 +797,22 @@ export function ComprehensiveHealthTemplate({
           </div>
         )}
       </div>
+
+      {/* Custom Download Modal */}
+      <CustomDownloadModal
+        open={showCustomModal}
+        onClose={() => { setShowCustomModal(false); setDownloadMode('choose') }}
+        data={{
+          ...(result?.detailedBreakdown || {}),
+          primaryResult: result?.primaryMetric
+            ? `${result.primaryMetric.label}: ${result.primaryMetric.value}${result.primaryMetric.unit ? ' ' + result.primaryMetric.unit : ''}`
+            : '',
+          healthScore: result?.healthScore !== undefined ? `${result.healthScore}/100` : '',
+          schedule: []
+        }}
+        title={title}
+        format={customModalFormat}
+      />
     </div>
   )
 }

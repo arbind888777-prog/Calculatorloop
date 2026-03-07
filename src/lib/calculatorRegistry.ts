@@ -1828,28 +1828,32 @@ export const calculatorComponents: Record<string, any> = {
   'date-plus-duration': dynamic(() => import('@/components/calculators/categories/misc/MiscCalculators').then(m => ({ default: m.DatePlusDurationCalculator }))),
   // 'percentage-calculator': dynamic(() => import('@/components/calculators/categories/misc/MiscCalculators').then(m => ({ default: m.PercentageCalculator }))), // Replaced by AdvancedArithmeticTools version
   'fuel-cost-calculator': dynamic(() => import('@/components/calculators/categories/misc/AdvancedFuelCostCalculator').then(m => ({ default: m.AdvancedFuelCostCalculator }))),
-  'bmi-calculator': dynamic(() => import('@/components/calculators/categories/health/ComprehensiveBMICalculator').then(m => ({ default: m.ComprehensiveBMICalculator }))),
+  'bmi-calculator': dynamic(() => import('@/components/calculators/categories/health/AdvancedBodyMeasurementTools').then(m => ({ default: m.AdvancedBMICalculator }))),
   'emergency-fund': dynamic(() => import('@/components/calculators/categories/misc/EmergencyFund').then(m => ({ default: m.EmergencyFund }))),
   'life-insurance-calculator': dynamic(() => import('@/components/calculators/categories/insurance/LifeInsuranceCalculator').then(m => ({ default: m.LifeInsuranceCalculator }))),
 
   // Health Calculators
-  'bmr-calculator': dynamic(() => import('@/components/calculators/categories/health/HealthCalculators').then(m => ({ default: m.BMRCalculator }))),
-  'body-fat-calculator': dynamic(() => import('@/components/calculators/categories/health/HealthCalculators').then(m => ({ default: m.BodyFatCalculator }))),
+  'bmr-calculator': dynamic(() => import('@/components/calculators/categories/health/AdvancedBodyMeasurementTools').then(m => ({ default: m.AdvancedBMRCalculator }))),
+  'body-fat-calculator': dynamic(() => import('@/components/calculators/categories/health/AdvancedBodyMeasurementTools').then(m => ({ default: m.AdvancedBodyFatCalculator }))),
   'calorie-calculator': dynamic(() => import('@/components/calculators/categories/health/AdvancedCalorieCalculator').then(m => ({ default: m.AdvancedCalorieCalculator }))),
   'ideal-weight-calculator': dynamic(() => import('@/components/calculators/categories/health/HealthCalculators').then(m => ({ default: m.IdealWeightCalculator }))),
   'macro-calculator': dynamic(() => import('@/components/calculators/categories/health/HealthCalculators').then(m => ({ default: m.MacroCalculator }))),
   'tdee-calculator': dynamic(() => import('@/components/calculators/categories/health/HealthCalculators').then(m => ({ default: m.TDEECalculator }))),
   'water-intake-calculator': dynamic(() => import('@/components/calculators/categories/health/HealthCalculators').then(m => ({ default: m.WaterIntakeCalculator }))),
-  'lean-body-mass': dynamic(() => import('@/components/calculators/categories/health/HealthCalculators').then(m => ({ default: m.LeanBodyMassCalculator }))),
-  'waist-hip-ratio': dynamic(() => import('@/components/calculators/categories/health/HealthCalculators').then(m => ({ default: m.WaistHipRatioCalculator }))),
+  'lean-body-mass': dynamic(() => import('@/components/calculators/categories/health/AdvancedBodyMeasurementTools').then(m => ({ default: m.AdvancedLeanBodyMassCalculator }))),
+  'waist-hip-ratio': dynamic(() => import('@/components/calculators/categories/health/AdvancedBodyMeasurementTools').then(m => ({ default: m.AdvancedWaistHipRatioCalculator }))),
   'protein-calculator': dynamic(() => import('@/components/calculators/categories/health/HealthCalculators').then(m => ({ default: m.ProteinCalculator }))),
   'calories-burned': dynamic(() => import('@/components/calculators/categories/health/HealthCalculators').then(m => ({ default: m.CaloriesBurnedCalculator }))),
   'target-heart-rate': dynamic(() => import('@/components/calculators/categories/health/HealthCalculators').then(m => ({ default: m.TargetHeartRateCalculator }))),
   'sleep-calculator': dynamic(() => import('@/components/calculators/categories/health/HealthCalculators').then(m => ({ default: m.SleepCalculator }))),
 
-  // Health - Body Measurements (NEW ADVANCED CALCULATORS)
-  'body-surface-area': dynamic(() => import('@/components/calculators/categories/health/BodyMeasurementCalculators').then(m => ({ default: m.BodySurfaceAreaCalculator }))),
-  'waist-to-height-ratio': dynamic(() => import('@/components/calculators/categories/health/BodyMeasurementCalculators').then(m => ({ default: m.WaistToHeightRatioCalculator }))),
+  // Health - Body Measurements (ADVANCED CALCULATORS)
+  'body-surface-area': dynamic(() => import('@/components/calculators/categories/health/AdvancedBodyMeasurementTools').then(m => ({ default: m.AdvancedBSACalculator }))),
+  'waist-to-height-ratio': dynamic(() => import('@/components/calculators/categories/health/AdvancedBodyMeasurementTools').then(m => ({ default: m.AdvancedWaistHeightRatioCalculator }))),
+  'waist-circumference': dynamic(() => import('@/components/calculators/categories/health/AdvancedBodyMeasurementTools').then(m => ({ default: m.AdvancedWaistCircumferenceCalculator }))),
+  'neck-circumference': dynamic(() => import('@/components/calculators/categories/health/AdvancedBodyMeasurementTools').then(m => ({ default: m.AdvancedNeckCircumferenceCalculator }))),
+  'hip-circumference': dynamic(() => import('@/components/calculators/categories/health/AdvancedBodyMeasurementTools').then(m => ({ default: m.AdvancedHipCircumferenceCalculator }))),
+  'integrated-health-dashboard': dynamic(() => import('@/components/calculators/categories/health/IntegratedBodyHealthEngine').then(m => ({ default: m.IntegratedBodyHealthEngine }))),
 
   // Health - Nutrition / Supplements
   'caffeine-half-life': dynamic(() => import('@/components/calculators/categories/health/NutritionSupplementCalculators').then(m => ({ default: m.CaffeineHalfLifeCalculator }))),
@@ -1955,9 +1959,7 @@ export const calculatorComponents: Record<string, any> = {
   'corrected-calcium': dynamic(() => import('@/components/calculators/categories/health/AdvancedDiseaseRiskCalculators').then(m => ({ default: m.CorrectedCalciumCalculator }))),
 
   // ─── Health - Body Measurements ───────────────────────────────────────────
-  'waist-circumference': dynamic(() => import('@/components/calculators/categories/health/AdvancedBodyMeasurementCalculators').then(m => ({ default: m.WaistCircumferenceCalculator }))),
-  'neck-circumference': dynamic(() => import('@/components/calculators/categories/health/AdvancedBodyMeasurementCalculators').then(m => ({ default: m.NeckCircumferenceCalculator }))),
-  'hip-circumference': dynamic(() => import('@/components/calculators/categories/health/AdvancedBodyMeasurementCalculators').then(m => ({ default: m.HipCircumferenceCalculator }))),
+  // Note: waist-circumference, neck-circumference, hip-circumference are registered above with Advanced versions
   'body-adiposity-index': dynamic(() => import('@/components/calculators/categories/health/AdvancedBodyMeasurementCalculators').then(m => ({ default: m.BodyAdiposityIndexCalculator }))),
   'ponderal-index': dynamic(() => import('@/components/calculators/categories/health/AdvancedBodyMeasurementCalculators').then(m => ({ default: m.PonderalIndexCalculator }))),
   'a-body-shape-index-absi': dynamic(() => import('@/components/calculators/categories/health/AdvancedBodyMeasurementCalculators').then(m => ({ default: m.ABSICalculator }))),
@@ -1987,6 +1989,9 @@ export const calculatorComponents: Record<string, any> = {
   'suprailiac-skinfold': dynamic(() => import('@/components/calculators/categories/health/AdvancedBodyMeasurementCalculators').then(m => ({ default: m.SuprailiacSkinfoldCalculator }))),
   'abdominal-skinfold': dynamic(() => import('@/components/calculators/categories/health/AdvancedBodyMeasurementCalculators').then(m => ({ default: m.AbdominalSkinfoldCalculator }))),
   'thigh-skinfold': dynamic(() => import('@/components/calculators/categories/health/AdvancedBodyMeasurementCalculators').then(m => ({ default: m.ThighSkinfoldCalculator }))),
+  'frame-size-calculator': dynamic(() => import('@/components/calculators/categories/health/AdvancedBodyMeasurementCalculators').then(m => ({ default: m.FrameSizeCalculator }))),
+  'tibia-length-height': dynamic(() => import('@/components/calculators/categories/health/AdvancedBodyMeasurementCalculators').then(m => ({ default: m.TibiaLengthHeightCalculator }))),
+  'ulna-length-height': dynamic(() => import('@/components/calculators/categories/health/AdvancedBodyMeasurementCalculators').then(m => ({ default: m.UlnaLengthHeightCalculator }))),
 
   // Math Calculators
   'basic-calculator': dynamic(() => import('@/components/calculators/categories/math/BasicArithmetic').then(m => ({ default: m.BasicCalculator }))),
