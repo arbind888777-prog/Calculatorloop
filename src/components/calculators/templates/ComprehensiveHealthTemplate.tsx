@@ -68,6 +68,7 @@ interface ComprehensiveHealthTemplateProps {
   seoContent?: ReactNode
   categoryName?: string
   toolId?: string
+  resultExtras?: ReactNode
 }
 
 export function ComprehensiveHealthTemplate({
@@ -82,7 +83,8 @@ export function ComprehensiveHealthTemplate({
   values = [],
   seoContent,
   categoryName = "Health",
-  toolId = "health-calculator"
+  toolId = "health-calculator",
+  resultExtras
 }: ComprehensiveHealthTemplateProps) {
   const { language } = useSettings()
   const t = useMemo(() => getMergedTranslations(language), [language])
@@ -771,6 +773,8 @@ export function ComprehensiveHealthTemplate({
                       </ul>
                     </CardContent>
                   </Card>
+
+                  {resultExtras}
                 </div>
               </>
             ) : (
