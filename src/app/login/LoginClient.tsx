@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useMemo, useState } from "react"
-import { getProviders, signIn, type ClientSafeProvider } from "next-auth/react"
+import { getProviders, signIn, useSession, type ClientSafeProvider } from "next-auth/react"
 import { useRouter, useSearchParams } from "next/navigation"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
@@ -13,6 +13,7 @@ import { useSettings } from "@/components/providers/SettingsProvider"
 export default function LoginClient() {
   const router = useRouter()
   const searchParams = useSearchParams()
+  const { status } = useSession()
   const { language } = useSettings()
   const prefix = language === 'en' ? '' : `/${language}`
   const withLocale = (path: string) => `${prefix}${path}`
@@ -53,6 +54,15 @@ export default function LoginClient() {
     }
   }, [searchParams])
 
+  useEffect(() => {
+    if (status !== "authenticated") {
+      return
+    }
+
+    router.replace(callbackUrl || withLocale("/"))
+    router.refresh()
+  }, [status, callbackUrl, router, language])
+
   const login = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsLoading(true)
@@ -71,7 +81,7 @@ export default function LoginClient() {
       if (callback?.ok && !callback?.error) {
         toast.success("Logged in successfully!")
         const target = callbackUrl || withLocale("/")
-        router.push(target)
+        router.replace(target)
         router.refresh()
       }
     } catch (error) {
