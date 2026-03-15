@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from 'next'
 import { headers } from 'next/headers'
 import { ThemeProvider } from '@/components/providers/ThemeProvider'
 import { AuthProvider } from '@/components/providers/AuthProvider'
+import { CloudSyncBootstrap } from '@/components/providers/CloudSyncBootstrap'
 import { SettingsProvider } from '@/components/providers/SettingsProvider'
 import { Navbar } from '@/components/layout/Navbar'
 import { Footer } from '@/components/layout/Footer'
@@ -223,6 +224,7 @@ export default async function RootLayout({
         <ServiceWorkerRegistration />
         <AuthProvider>
           <SettingsProvider>
+            <CloudSyncBootstrap />
             <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
               <AnalyticsProvider>
                 <ToastProvider />

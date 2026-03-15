@@ -283,15 +283,27 @@ export function MobileMenu({
                 <div className="text-sm text-muted-foreground text-center">
                   Sign in to save your calculations and access premium features.
                 </div>
-                <Button
-                  asChild
-                  className="w-full bg-gradient-to-r from-[#00D4FF] to-[#8B5CF6] text-white border-none hover:opacity-90 gap-2"
-                >
-                  <Link href={withLocale("/login")} onClick={onClose}>
-                    <LogIn className="h-4 w-4" />
-                    Login / Register
-                  </Link>
-                </Button>
+                <div className="grid grid-cols-2 gap-2">
+                  <Button
+                    asChild
+                    variant="outline"
+                    className="w-full gap-2"
+                  >
+                    <Link href={withLocale("/login")} onClick={onClose}>
+                      <LogIn className="h-4 w-4" />
+                      Login
+                    </Link>
+                  </Button>
+                  <Button
+                    asChild
+                    className="w-full bg-gradient-to-r from-[#00D4FF] to-[#8B5CF6] text-white border-none hover:opacity-90 gap-2"
+                  >
+                    <Link href={withLocale("/register")} onClick={onClose}>
+                      <User className="h-4 w-4" />
+                      Register
+                    </Link>
+                  </Button>
+                </div>
               </div>
             )}
           </div>

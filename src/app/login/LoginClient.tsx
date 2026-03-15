@@ -47,11 +47,37 @@ export default function LoginClient() {
       // Allow same-origin absolute URLs and relative paths only.
       if (raw.startsWith('/')) return raw
       const url = new URL(raw)
-      if (url.origin === window.location.origin) return url.pathname + url.search + url.hash
+      if (url.host === window.location.host) return url.pathname + url.search + url.hash
       return ''
     } catch {
       return ''
     }
+  }, [searchParams])
+
+  const defaultDashboardPath = useMemo(() => withLocale('/profile'), [language])
+
+  const absoluteCallbackUrl = useMemo(() => {
+    if (typeof window === 'undefined') {
+      return callbackUrl || defaultDashboardPath
+    }
+
+    return new URL(callbackUrl || defaultDashboardPath, window.location.origin).toString()
+  }, [callbackUrl, defaultDashboardPath])
+
+  // Show OAuth errors from URL (e.g. ?error=OAuthAccountNotLinked)
+  useEffect(() => {
+    const error = searchParams?.get('error')
+    if (!error) return
+    const errorMessages: Record<string, string> = {
+      OAuthAccountNotLinked: 'This email is already linked to another sign-in method. Try signing in with your email and password.',
+      OAuthSignin: 'Could not start Google sign-in. Please try again.',
+      OAuthCallback: 'Google sign-in failed. Please try again.',
+      OAuthCreateAccount: 'Could not create account with Google. Please try again.',
+      Callback: 'Sign-in failed. Please try again.',
+      AccessDenied: 'Access denied. You do not have permission to sign in.',
+      default: 'Something went wrong during sign-in. Please try again.',
+    }
+    toast.error(errorMessages[error] || errorMessages.default)
   }, [searchParams])
 
   useEffect(() => {
@@ -59,9 +85,9 @@ export default function LoginClient() {
       return
     }
 
-    router.replace(callbackUrl || withLocale("/"))
+    router.replace(callbackUrl || defaultDashboardPath)
     router.refresh()
-  }, [status, callbackUrl, router, language])
+  }, [status, callbackUrl, router, defaultDashboardPath])
 
   const login = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -71,7 +97,7 @@ export default function LoginClient() {
       const callback = await signIn("credentials", {
         ...data,
         redirect: false,
-        callbackUrl: callbackUrl || withLocale('/'),
+        callbackUrl: absoluteCallbackUrl,
       })
 
       if (callback?.error) {
@@ -80,7 +106,7 @@ export default function LoginClient() {
 
       if (callback?.ok && !callback?.error) {
         toast.success("Logged in successfully!")
-        const target = callbackUrl || withLocale("/")
+        const target = callbackUrl || defaultDashboardPath
         router.replace(target)
         router.refresh()
       }
@@ -169,7 +195,7 @@ export default function LoginClient() {
                     toast.error('Google sign-in is not configured')
                     return
                   }
-                  signIn('google', { callbackUrl: callbackUrl || withLocale('/') })
+                  signIn('google', { callbackUrl: absoluteCallbackUrl })
                 }}
               >
                 <svg className="mr-2 h-4 w-4" aria-hidden="true" focusable="false" data-prefix="fab" data-icon="google" role="img" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 488 512"><path fill="currentColor" d="M488 261.8C488 403.3 391.1 504 248 504 110.8 504 0 393.2 0 256S110.8 8 248 8c66.8 0 123 24.5 166.3 64.9l-67.5 64.9C258.5 52.6 94.3 116.6 94.3 256c0 86.5 69.1 156.6 153.7 156.6 98.2 0 135-70.4 140.8-106.9H248v-85.3h236.1c2.3 12.7 3.9 24.9 3.9 41.4z"></path></svg>
