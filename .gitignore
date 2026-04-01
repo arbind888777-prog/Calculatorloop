@@ -36,8 +36,11 @@ tmp_*.html
 # Auto-learned AI content (generated at runtime)
 src/content/knowledge-base/auto-learned/
 
-# Local env files
+# Local env files — never commit these
 .env
+.env.local
+.env.*.local
+.env.production
 .env*.local
 
 # Vercel

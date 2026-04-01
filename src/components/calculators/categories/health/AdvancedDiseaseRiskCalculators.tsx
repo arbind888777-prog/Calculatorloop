@@ -348,7 +348,7 @@ export function eGFRCalculator() {
 
     let stage = "", status: 'normal' | 'warning' | 'danger' | 'good' = "good"
     if (egfr >= 90) { stage = "G1: Normal (≥90)"; status = "good" }
-    else if (egfr >= 60) { stage = "G2: Mildly Decreased (60-89)"; status = "good" }
+    else if (egfr >= 60) { stage = "G2: Mildly Decreased (60-89)"; status = "good" }    
     else if (egfr >= 45) { stage = "G3a: Mildly-Moderately Decreased (45-59)"; status = "warning" }
     else if (egfr >= 30) { stage = "G3b: Moderately-Severely Decreased (30-44)"; status = "warning" }
     else if (egfr >= 15) { stage = "G4: Severely Decreased (15-29)"; status = "danger" }

@@ -49,6 +49,93 @@ const safeInt = (val: any) => {
 const gcd = (a: number, b: number): number => b === 0 ? Math.abs(a) : gcd(b, a % b);
 const lcm = (a: number, b: number): number => Math.abs(a * b) / gcd(a, b);
 
+const parseVector = (value: string): number[] =>
+  String(value ?? '')
+    .split(',')
+    .map(part => parseFloat(part.trim()))
+    .filter(num => Number.isFinite(num));
+
+const formatVector = (vector: number[]): string => `[${vector.map(v => Number(v.toFixed(4))).join(', ')}]`;
+
+const dotProduct = (left: number[], right: number[]): number =>
+  left.reduce((sum, value, index) => sum + value * (right[index] ?? 0), 0);
+
+const vectorMagnitude = (vector: number[]): number => Math.sqrt(dotProduct(vector, vector));
+
+const parseMatrix = (value: string): number[][] =>
+  String(value ?? '')
+    .split(';')
+    .map(row => row.split(',').map(part => parseFloat(part.trim())).filter(num => Number.isFinite(num)))
+    .filter(row => row.length > 0);
+
+const formatMatrix = (matrix: number[][]): string =>
+  matrix.map(row => `[${row.map(v => Number(v.toFixed(4))).join(', ')}]`).join(' ');
+
+const sameDimensions = (left: number[], right: number[]) => left.length > 0 && left.length === right.length;
+
+const determinant2x2 = (matrix: number[][]): number => matrix[0][0] * matrix[1][1] - matrix[0][1] * matrix[1][0];
+
+const determinant3x3 = (matrix: number[][]): number =>
+  matrix[0][0] * (matrix[1][1] * matrix[2][2] - matrix[1][2] * matrix[2][1]) -
+  matrix[0][1] * (matrix[1][0] * matrix[2][2] - matrix[1][2] * matrix[2][0]) +
+  matrix[0][2] * (matrix[1][0] * matrix[2][1] - matrix[1][1] * matrix[2][0]);
+
+const inverse2x2 = (matrix: number[][]): number[][] | null => {
+  const det = determinant2x2(matrix);
+  if (det === 0) return null;
+  return [
+    [matrix[1][1] / det, -matrix[0][1] / det],
+    [-matrix[1][0] / det, matrix[0][0] / det],
+  ];
+};
+
+const matrixVectorMultiply = (matrix: number[][], vector: number[]): number[] =>
+  matrix.map(row => row.reduce((sum, value, index) => sum + value * (vector[index] ?? 0), 0));
+
+const matrixRank2x2 = (matrix: number[][]): number => {
+  if (matrix.length !== 2 || matrix.some(row => row.length !== 2)) return 0;
+  if (determinant2x2(matrix) !== 0) return 2;
+  if (matrix.flat().some(value => value !== 0)) return 1;
+  return 0;
+};
+
+const solve2x2System = (matrix: number[][], constants: number[]): number[] | null => {
+  const det = determinant2x2(matrix);
+  if (det === 0) return null;
+  const detX = constants[0] * matrix[1][1] - matrix[0][1] * constants[1];
+  const detY = matrix[0][0] * constants[1] - constants[0] * matrix[1][0];
+  return [detX / det, detY / det];
+};
+
+const eigen2x2 = (matrix: number[][]): { values: number[]; vectors: number[][] } | null => {
+  if (matrix.length !== 2 || matrix.some(row => row.length !== 2)) return null;
+  const trace = matrix[0][0] + matrix[1][1];
+  const det = determinant2x2(matrix);
+  const discriminant = trace * trace - 4 * det;
+  if (discriminant < 0) return null;
+  const root = Math.sqrt(discriminant);
+  const lambda1 = (trace + root) / 2;
+  const lambda2 = (trace - root) / 2;
+  const makeVector = (lambda: number) => {
+    if (matrix[0][1] !== 0) return [1, (lambda - matrix[0][0]) / matrix[0][1]];
+    if (matrix[1][0] !== 0) return [(lambda - matrix[1][1]) / matrix[1][0], 1];
+    return [1, 0];
+  };
+  return { values: [lambda1, lambda2], vectors: [makeVector(lambda1), makeVector(lambda2)] };
+};
+
+const covariance2D = (points: number[][]): number[][] => {
+  const meanX = points.reduce((sum, point) => sum + point[0], 0) / points.length;
+  const meanY = points.reduce((sum, point) => sum + point[1], 0) / points.length;
+  const covXX = points.reduce((sum, point) => sum + (point[0] - meanX) ** 2, 0) / (points.length - 1 || 1);
+  const covYY = points.reduce((sum, point) => sum + (point[1] - meanY) ** 2, 0) / (points.length - 1 || 1);
+  const covXY = points.reduce((sum, point) => sum + (point[0] - meanX) * (point[1] - meanY), 0) / (points.length - 1 || 1);
+  return [
+    [covXX, covXY],
+    [covXY, covYY],
+  ];
+};
+
 const getToolConfig = (id: string | undefined): MathToolConfig => {
   if (!id) return {
     title: 'Calculator Not Found',
@@ -983,6 +1070,408 @@ const getToolConfig = (id: string | undefined): MathToolConfig => {
         };
       }
     };
+  }
+
+  if (
+    [
+      'vector-add-subtract',
+      'vector-scalar-multiply',
+      'vector-magnitude-norm',
+      'vector-dot-product-angle',
+      'vector-cross-product-3d',
+      'vector-projection-rejection',
+      'vector-orthogonality-check',
+      'gram-schmidt-orthonormalization',
+      'matrix-vector-multiplication',
+      'linear-combination-solver',
+      'span-basis-independence',
+      'solve-linear-system-advanced',
+      'matrix-inverse-advanced',
+      'rank-determinant-advanced',
+      'eigensystem-calculator',
+      'svd-calculator',
+      'pca-variance-calculator',
+    ].includes(id)
+  ) {
+    const vectorHelp = 'Comma-separated values, e.g. 1,2,3';
+    const matrixHelp = 'Rows separated by semicolon, e.g. 1,2;3,4';
+
+    const configs: Record<string, MathToolConfig> = {
+      'vector-add-subtract': {
+        title: 'Vector Addition & Subtraction',
+        description: 'Add or subtract vectors component-wise with advanced vector notation.',
+        inputs: [
+          { name: 'operation', label: 'Operation', type: 'select', options: ['Add', 'Subtract'], defaultValue: 'Add' },
+          { name: 'vectorA', label: 'Vector A', type: 'text', defaultValue: '1,2,3', placeholder: '1,2,3', helpText: vectorHelp },
+          { name: 'vectorB', label: 'Vector B', type: 'text', defaultValue: '4,5,6', placeholder: '4,5,6', helpText: vectorHelp },
+        ],
+        calculate: (inputs) => {
+          const a = parseVector(inputs.vectorA);
+          const b = parseVector(inputs.vectorB);
+          if (!sameDimensions(a, b)) return { result: 'Error', explanation: 'Both vectors must have the same non-zero dimension.' };
+          const operation = inputs.operation === 'Subtract' ? 'Subtract' : 'Add';
+          const result = a.map((value, index) => operation === 'Add' ? value + b[index] : value - b[index]);
+          return {
+            result: formatVector(result),
+            explanation: `${operation} ${formatVector(a)} and ${formatVector(b)}`,
+            steps: [`A = ${formatVector(a)}`, `B = ${formatVector(b)}`, `${operation === 'Add' ? 'A + B' : 'A - B'} = ${formatVector(result)}`],
+            formula: 'c_i = a_i ± b_i',
+          };
+        },
+      },
+      'vector-scalar-multiply': {
+        title: 'Scalar Multiplication Calculator',
+        description: 'Scale a vector by a scalar and inspect the transformed result.',
+        inputs: [
+          { name: 'scalar', label: 'Scalar', type: 'number', defaultValue: 3 },
+          { name: 'vector', label: 'Vector', type: 'text', defaultValue: '2,-1,4', placeholder: '2,-1,4', helpText: vectorHelp },
+        ],
+        calculate: (inputs) => {
+          const scalar = safeFloat(inputs.scalar);
+          const vector = parseVector(inputs.vector);
+          if (vector.length === 0) return { result: 'Error', explanation: 'Enter a valid vector.' };
+          const scaled = vector.map(value => scalar * value);
+          return {
+            result: formatVector(scaled),
+            explanation: `${scalar} × ${formatVector(vector)}`,
+            steps: [`k = ${scalar}`, `k·v = ${formatVector(scaled)}`],
+            formula: 'k·v = [k v₁, k v₂, ...]',
+          };
+        },
+      },
+      'vector-magnitude-norm': {
+        title: 'Vector Magnitude & Norm Calculator',
+        description: 'Compute L1, L2 and Infinity norms and the normalized vector.',
+        inputs: [
+          { name: 'vector', label: 'Vector', type: 'text', defaultValue: '3,4', placeholder: '3,4', helpText: vectorHelp },
+        ],
+        calculate: (inputs) => {
+          const vector = parseVector(inputs.vector);
+          if (vector.length === 0) return { result: 'Error', explanation: 'Enter a valid vector.' };
+          const l1 = vector.reduce((sum, value) => sum + Math.abs(value), 0);
+          const l2 = vectorMagnitude(vector);
+          const linf = Math.max(...vector.map(value => Math.abs(value)));
+          const normalized = l2 === 0 ? vector : vector.map(value => value / l2);
+          return {
+            result: `L2 = ${l2.toFixed(4)}`,
+            explanation: `Norms for ${formatVector(vector)}`,
+            steps: [
+              `L1 = ${l1.toFixed(4)}`,
+              `L2 = sqrt(sum(vᵢ²)) = ${l2.toFixed(4)}`,
+              `L∞ = ${linf.toFixed(4)}`,
+              `Normalized vector = ${formatVector(normalized)}`,
+            ],
+          };
+        },
+      },
+      'vector-dot-product-angle': {
+        title: 'Dot Product & Angle Calculator',
+        description: 'Find dot product, cosine similarity and angle between vectors.',
+        inputs: [
+          { name: 'vectorA', label: 'Vector A', type: 'text', defaultValue: '1,2,3', placeholder: '1,2,3', helpText: vectorHelp },
+          { name: 'vectorB', label: 'Vector B', type: 'text', defaultValue: '4,5,6', placeholder: '4,5,6', helpText: vectorHelp },
+        ],
+        calculate: (inputs) => {
+          const a = parseVector(inputs.vectorA);
+          const b = parseVector(inputs.vectorB);
+          if (!sameDimensions(a, b)) return { result: 'Error', explanation: 'Both vectors must have the same non-zero dimension.' };
+          const dot = dotProduct(a, b);
+          const magA = vectorMagnitude(a);
+          const magB = vectorMagnitude(b);
+          if (magA === 0 || magB === 0) return { result: 'Error', explanation: 'Zero vector is not allowed for angle calculation.' };
+          const cosine = Math.max(-1, Math.min(1, dot / (magA * magB)));
+          const angleDeg = Math.acos(cosine) * (180 / Math.PI);
+          return {
+            result: `Dot = ${dot.toFixed(4)}`,
+            explanation: `Angle = ${angleDeg.toFixed(4)}°`,
+            steps: [
+              `A·B = ${dot.toFixed(4)}`,
+              `|A| = ${magA.toFixed(4)}, |B| = ${magB.toFixed(4)}`,
+              `cos θ = ${cosine.toFixed(6)}`,
+              `θ = ${angleDeg.toFixed(4)}°`,
+            ],
+          };
+        },
+      },
+      'vector-cross-product-3d': {
+        title: '3D Cross Product Calculator',
+        description: 'Compute the cross product of two 3D vectors and the parallelogram area.',
+        inputs: [
+          { name: 'vectorA', label: 'Vector A', type: 'text', defaultValue: '1,0,0', placeholder: '1,0,0', helpText: vectorHelp },
+          { name: 'vectorB', label: 'Vector B', type: 'text', defaultValue: '0,1,0', placeholder: '0,1,0', helpText: vectorHelp },
+        ],
+        calculate: (inputs) => {
+          const a = parseVector(inputs.vectorA);
+          const b = parseVector(inputs.vectorB);
+          if (a.length !== 3 || b.length !== 3) return { result: 'Error', explanation: 'Cross product needs two 3D vectors.' };
+          const cross = [
+            a[1] * b[2] - a[2] * b[1],
+            a[2] * b[0] - a[0] * b[2],
+            a[0] * b[1] - a[1] * b[0],
+          ];
+          const area = vectorMagnitude(cross);
+          return {
+            result: formatVector(cross),
+            explanation: `Cross product = ${formatVector(cross)}`,
+            steps: [`A × B = ${formatVector(cross)}`, `Parallelogram area = |A × B| = ${area.toFixed(4)}`],
+          };
+        },
+      },
+      'vector-projection-rejection': {
+        title: 'Vector Projection & Rejection',
+        description: 'Resolve a vector into its parallel and perpendicular components.',
+        inputs: [
+          { name: 'vectorA', label: 'Vector to Project', type: 'text', defaultValue: '3,4', placeholder: '3,4', helpText: vectorHelp },
+          { name: 'vectorB', label: 'Base Vector', type: 'text', defaultValue: '1,0', placeholder: '1,0', helpText: vectorHelp },
+        ],
+        calculate: (inputs) => {
+          const a = parseVector(inputs.vectorA);
+          const b = parseVector(inputs.vectorB);
+          if (!sameDimensions(a, b)) return { result: 'Error', explanation: 'Vectors must have same dimension.' };
+          const denom = dotProduct(b, b);
+          if (denom === 0) return { result: 'Error', explanation: 'Base vector cannot be the zero vector.' };
+          const factor = dotProduct(a, b) / denom;
+          const projection = b.map(value => factor * value);
+          const rejection = a.map((value, index) => value - projection[index]);
+          return {
+            result: `proj = ${formatVector(projection)}`,
+            explanation: `rej = ${formatVector(rejection)}`,
+            steps: [`Projection factor = ${factor.toFixed(4)}`, `Projection = ${formatVector(projection)}`, `Rejection = ${formatVector(rejection)}`],
+          };
+        },
+      },
+      'vector-orthogonality-check': {
+        title: 'Orthogonality & Orthonormality Check',
+        description: 'Check whether two vectors are orthogonal or orthonormal.',
+        inputs: [
+          { name: 'vectorA', label: 'Vector A', type: 'text', defaultValue: '1,0', placeholder: '1,0', helpText: vectorHelp },
+          { name: 'vectorB', label: 'Vector B', type: 'text', defaultValue: '0,1', placeholder: '0,1', helpText: vectorHelp },
+        ],
+        calculate: (inputs) => {
+          const a = parseVector(inputs.vectorA);
+          const b = parseVector(inputs.vectorB);
+          if (!sameDimensions(a, b)) return { result: 'Error', explanation: 'Vectors must have same dimension.' };
+          const dot = dotProduct(a, b);
+          const orthogonal = Math.abs(dot) < 1e-9;
+          const orthonormal = orthogonal && Math.abs(vectorMagnitude(a) - 1) < 1e-9 && Math.abs(vectorMagnitude(b) - 1) < 1e-9;
+          return {
+            result: orthonormal ? 'Orthonormal' : orthogonal ? 'Orthogonal' : 'Not Orthogonal',
+            explanation: `Dot product = ${dot.toFixed(6)}`,
+            steps: [`A·B = ${dot.toFixed(6)}`, `|A| = ${vectorMagnitude(a).toFixed(6)}`, `|B| = ${vectorMagnitude(b).toFixed(6)}`],
+          };
+        },
+      },
+      'gram-schmidt-orthonormalization': {
+        title: 'Gram–Schmidt Orthonormalization',
+        description: 'Generate an orthonormal basis from two linearly independent vectors.',
+        inputs: [
+          { name: 'vectorA', label: 'Vector A', type: 'text', defaultValue: '1,1', placeholder: '1,1', helpText: vectorHelp },
+          { name: 'vectorB', label: 'Vector B', type: 'text', defaultValue: '1,0', placeholder: '1,0', helpText: vectorHelp },
+        ],
+        calculate: (inputs) => {
+          const a = parseVector(inputs.vectorA);
+          const b = parseVector(inputs.vectorB);
+          if (!sameDimensions(a, b)) return { result: 'Error', explanation: 'Vectors must have same dimension.' };
+          const normA = vectorMagnitude(a);
+          if (normA === 0) return { result: 'Error', explanation: 'First vector cannot be zero.' };
+          const e1 = a.map(value => value / normA);
+          const projFactor = dotProduct(b, e1);
+          const u2 = b.map((value, index) => value - projFactor * e1[index]);
+          const normU2 = vectorMagnitude(u2);
+          if (normU2 === 0) return { result: 'Error', explanation: 'Vectors are linearly dependent.' };
+          const e2 = u2.map(value => value / normU2);
+          return {
+            result: `e1 = ${formatVector(e1)}`,
+            explanation: `e2 = ${formatVector(e2)}`,
+            steps: [`e1 = ${formatVector(e1)}`, `u2 = ${formatVector(u2)}`, `e2 = ${formatVector(e2)}`],
+          };
+        },
+      },
+      'matrix-vector-multiplication': {
+        title: 'Matrix–Vector Multiplication',
+        description: 'Multiply a matrix by a vector with dimension checking.',
+        inputs: [
+          { name: 'matrix', label: 'Matrix', type: 'text', defaultValue: '1,2;3,4', placeholder: '1,2;3,4', helpText: matrixHelp },
+          { name: 'vector', label: 'Vector', type: 'text', defaultValue: '5,6', placeholder: '5,6', helpText: vectorHelp },
+        ],
+        calculate: (inputs) => {
+          const matrix = parseMatrix(inputs.matrix);
+          const vector = parseVector(inputs.vector);
+          if (matrix.length === 0 || vector.length === 0 || matrix.some(row => row.length !== vector.length)) {
+            return { result: 'Error', explanation: 'Matrix columns must match vector dimension.' };
+          }
+          const product = matrixVectorMultiply(matrix, vector);
+          return {
+            result: formatVector(product),
+            explanation: `${formatMatrix(matrix)} × ${formatVector(vector)}`,
+            steps: [`Matrix = ${formatMatrix(matrix)}`, `Vector = ${formatVector(vector)}`, `Product = ${formatVector(product)}`],
+          };
+        },
+      },
+      'linear-combination-solver': {
+        title: 'Linear Combination Solver',
+        description: 'Solve a 2D linear combination c1·v1 + c2·v2 = target.',
+        inputs: [
+          { name: 'basis1', label: 'Basis Vector 1', type: 'text', defaultValue: '1,0', placeholder: '1,0', helpText: vectorHelp },
+          { name: 'basis2', label: 'Basis Vector 2', type: 'text', defaultValue: '0,1', placeholder: '0,1', helpText: vectorHelp },
+          { name: 'target', label: 'Target Vector', type: 'text', defaultValue: '4,7', placeholder: '4,7', helpText: vectorHelp },
+        ],
+        calculate: (inputs) => {
+          const v1 = parseVector(inputs.basis1);
+          const v2 = parseVector(inputs.basis2);
+          const target = parseVector(inputs.target);
+          if (v1.length !== 2 || v2.length !== 2 || target.length !== 2) return { result: 'Error', explanation: 'This solver currently supports 2D vectors only.' };
+          const solution = solve2x2System([[v1[0], v2[0]], [v1[1], v2[1]]], target);
+          if (!solution) return { result: 'Error', explanation: 'Given basis vectors do not span the target uniquely.' };
+          return {
+            result: `c1 = ${solution[0].toFixed(4)}, c2 = ${solution[1].toFixed(4)}`,
+            explanation: `${solution[0].toFixed(4)}·v1 + ${solution[1].toFixed(4)}·v2 = target`,
+            steps: [`v1 = ${formatVector(v1)}, v2 = ${formatVector(v2)}`, `target = ${formatVector(target)}`, `Coefficients = [${solution.map(v => v.toFixed(4)).join(', ')}]`],
+          };
+        },
+      },
+      'span-basis-independence': {
+        title: 'Span, Basis & Linear Independence',
+        description: 'Check whether two 2D vectors are linearly independent and form a basis.',
+        inputs: [
+          { name: 'vectorA', label: 'Vector A', type: 'text', defaultValue: '1,2', placeholder: '1,2', helpText: vectorHelp },
+          { name: 'vectorB', label: 'Vector B', type: 'text', defaultValue: '3,4', placeholder: '3,4', helpText: vectorHelp },
+        ],
+        calculate: (inputs) => {
+          const a = parseVector(inputs.vectorA);
+          const b = parseVector(inputs.vectorB);
+          if (a.length !== 2 || b.length !== 2) return { result: 'Error', explanation: 'This checker currently supports 2D vectors only.' };
+          const det = determinant2x2([[a[0], b[0]], [a[1], b[1]]]);
+          const independent = Math.abs(det) > 1e-9;
+          return {
+            result: independent ? 'Linearly Independent' : 'Linearly Dependent',
+            explanation: independent ? 'These vectors form a basis for R².' : 'These vectors do not form a basis for R².',
+            steps: [`Determinant = ${det.toFixed(6)}`, independent ? 'det ≠ 0, so basis exists.' : 'det = 0, so vectors are dependent.'],
+          };
+        },
+      },
+      'solve-linear-system-advanced': {
+        title: 'Advanced Linear System Solver',
+        description: 'Solve a 2×2 linear system Ax = b using determinant method.',
+        inputs: [
+          { name: 'matrix', label: 'Coefficient Matrix', type: 'text', defaultValue: '2,1;5,3', placeholder: '2,1;5,3', helpText: matrixHelp },
+          { name: 'constants', label: 'Constants Vector', type: 'text', defaultValue: '1,2', placeholder: '1,2', helpText: vectorHelp },
+        ],
+        calculate: (inputs) => {
+          const matrix = parseMatrix(inputs.matrix);
+          const constants = parseVector(inputs.constants);
+          if (matrix.length !== 2 || matrix.some(row => row.length !== 2) || constants.length !== 2) {
+            return { result: 'Error', explanation: 'This solver currently supports only 2×2 systems.' };
+          }
+          const solution = solve2x2System(matrix, constants);
+          if (!solution) return { result: 'Error', explanation: 'System has no unique solution.' };
+          return {
+            result: `x = ${solution[0].toFixed(4)}, y = ${solution[1].toFixed(4)}`,
+            explanation: `Solution vector = ${formatVector(solution)}`,
+            steps: [`A = ${formatMatrix(matrix)}`, `b = ${formatVector(constants)}`, `x = ${formatVector(solution)}`],
+          };
+        },
+      },
+      'matrix-inverse-advanced': {
+        title: 'Matrix Inverse Calculator',
+        description: 'Find the inverse of a 2×2 matrix and verify invertibility.',
+        inputs: [
+          { name: 'matrix', label: '2×2 Matrix', type: 'text', defaultValue: '4,7;2,6', placeholder: '4,7;2,6', helpText: matrixHelp },
+        ],
+        calculate: (inputs) => {
+          const matrix = parseMatrix(inputs.matrix);
+          if (matrix.length !== 2 || matrix.some(row => row.length !== 2)) return { result: 'Error', explanation: 'Only 2×2 matrices are supported here.' };
+          const inverse = inverse2x2(matrix);
+          if (!inverse) return { result: 'Error', explanation: 'Matrix is singular; inverse does not exist.' };
+          return {
+            result: formatMatrix(inverse),
+            explanation: `A⁻¹ = ${formatMatrix(inverse)}`,
+            steps: [`det(A) = ${determinant2x2(matrix).toFixed(4)}`, `Inverse = ${formatMatrix(inverse)}`],
+          };
+        },
+      },
+      'rank-determinant-advanced': {
+        title: 'Rank & Determinant Calculator',
+        description: 'Compute determinant and rank for a 2×2 matrix.',
+        inputs: [
+          { name: 'matrix', label: '2×2 Matrix', type: 'text', defaultValue: '1,2;3,4', placeholder: '1,2;3,4', helpText: matrixHelp },
+        ],
+        calculate: (inputs) => {
+          const matrix = parseMatrix(inputs.matrix);
+          if (matrix.length !== 2 || matrix.some(row => row.length !== 2)) return { result: 'Error', explanation: 'Only 2×2 matrices are supported here.' };
+          const det = determinant2x2(matrix);
+          const rank = matrixRank2x2(matrix);
+          return {
+            result: `det = ${det.toFixed(4)}, rank = ${rank}`,
+            explanation: `Matrix rank and determinant computed successfully.`,
+            steps: [`A = ${formatMatrix(matrix)}`, `det(A) = ${det.toFixed(4)}`, `rank(A) = ${rank}`],
+          };
+        },
+      },
+      'eigensystem-calculator': {
+        title: 'Eigenvalue & Eigenvector Calculator',
+        description: 'Compute eigenvalues and eigenvectors for a 2×2 matrix.',
+        inputs: [
+          { name: 'matrix', label: '2×2 Matrix', type: 'text', defaultValue: '4,2;1,3', placeholder: '4,2;1,3', helpText: matrixHelp },
+        ],
+        calculate: (inputs) => {
+          const matrix = parseMatrix(inputs.matrix);
+          const eigen = eigen2x2(matrix);
+          if (!eigen) return { result: 'Error', explanation: 'Only real eigensystems for 2×2 matrices are supported.' };
+          return {
+            result: `λ1 = ${eigen.values[0].toFixed(4)}, λ2 = ${eigen.values[1].toFixed(4)}`,
+            explanation: `v1 = ${formatVector(eigen.vectors[0])}, v2 = ${formatVector(eigen.vectors[1])}`,
+            steps: [`Eigenvalues = [${eigen.values.map(v => v.toFixed(4)).join(', ')}]`, `Eigenvector 1 = ${formatVector(eigen.vectors[0])}`, `Eigenvector 2 = ${formatVector(eigen.vectors[1])}`],
+          };
+        },
+      },
+      'svd-calculator': {
+        title: 'Singular Value Decomposition (SVD)',
+        description: 'Estimate singular values of a 2×2 matrix from AᵀA eigenvalues.',
+        inputs: [
+          { name: 'matrix', label: '2×2 Matrix', type: 'text', defaultValue: '3,1;1,3', placeholder: '3,1;1,3', helpText: matrixHelp },
+        ],
+        calculate: (inputs) => {
+          const matrix = parseMatrix(inputs.matrix);
+          if (matrix.length !== 2 || matrix.some(row => row.length !== 2)) return { result: 'Error', explanation: 'Only 2×2 matrices are supported here.' };
+          const ata = [
+            [matrix[0][0] ** 2 + matrix[1][0] ** 2, matrix[0][0] * matrix[0][1] + matrix[1][0] * matrix[1][1]],
+            [matrix[0][0] * matrix[0][1] + matrix[1][0] * matrix[1][1], matrix[0][1] ** 2 + matrix[1][1] ** 2],
+          ];
+          const eigen = eigen2x2(ata);
+          if (!eigen) return { result: 'Error', explanation: 'Unable to compute singular values.' };
+          const singularValues = eigen.values.map(value => Math.sqrt(Math.max(0, value))).sort((a, b) => b - a);
+          return {
+            result: `σ = [${singularValues.map(v => v.toFixed(4)).join(', ')}]`,
+            explanation: `Computed from eigenvalues of AᵀA`,
+            steps: [`AᵀA = ${formatMatrix(ata)}`, `Singular values = [${singularValues.map(v => v.toFixed(4)).join(', ')}]`],
+          };
+        },
+      },
+      'pca-variance-calculator': {
+        title: 'PCA & Explained Variance Calculator',
+        description: 'Run PCA on 2D sample points and measure explained variance ratio.',
+        inputs: [
+          { name: 'points', label: '2D Points', type: 'text', defaultValue: '2,1;3,2;4,2;5,3', placeholder: '2,1;3,2;4,2;5,3', helpText: matrixHelp },
+        ],
+        calculate: (inputs) => {
+          const points = parseMatrix(inputs.points);
+          if (points.length < 2 || points.some(row => row.length !== 2)) return { result: 'Error', explanation: 'Provide at least two 2D points.' };
+          const covariance = covariance2D(points);
+          const eigen = eigen2x2(covariance);
+          if (!eigen) return { result: 'Error', explanation: 'Unable to compute PCA for these points.' };
+          const total = eigen.values[0] + eigen.values[1];
+          const explained = eigen.values.map(value => total === 0 ? 0 : (value / total) * 100);
+          return {
+            result: `PC1 variance = ${explained[0].toFixed(2)}%`,
+            explanation: `PC2 variance = ${explained[1].toFixed(2)}%`,
+            steps: [`Covariance = ${formatMatrix(covariance)}`, `Eigenvalues = [${eigen.values.map(v => v.toFixed(4)).join(', ')}]`, `Explained variance = [${explained.map(v => v.toFixed(2) + '%').join(', ')}]`],
+          };
+        },
+      },
+    };
+
+    return configs[id];
   }
 
   // DEFAULT GENERIC CALCULATOR

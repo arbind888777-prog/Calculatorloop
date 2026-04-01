@@ -1,22 +1,14 @@
 "use client"
 
 import Link from 'next/link'
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { 
-  Calculator, ChevronRight, DollarSign, Heart, Binary, Wrench, Briefcase, Home, GraduationCap, Calendar, Laptop, FlaskConical, ChevronDown,
-  Scale, Activity, Zap, Ruler, Clock, Globe, Percent, TrendingUp, Landmark, PiggyBank, CreditCard, Building, Truck, BookOpen, 
-  Coins, Banknote, Wallet, Receipt, BarChart3, PieChart, LineChart, ArrowRightLeft, Timer, Watch, Hourglass, Sun, Moon, 
-  Cloud, Wind, Thermometer, Droplets, Hammer, HardHat, PaintBucket, Smartphone, Wifi, Signal, 
-  Battery, Cpu, Database, Server, Code, Terminal, FileCode, FileJson, FileType, FileText, Image as ImageIcon, Music, Video, 
-  Gamepad, Joystick, Dna, Microscope, Atom, Syringe, Pill, Stethoscope, Brain, Baby, User, Users, Key, QrCode, Network, Box,
-  Apple, Dumbbell, Bed, Utensils, Goal, ShieldAlert, Package, Award, Sparkles, TrendingDown, Target, Shield, Lock,
-  Umbrella, CircleDollarSign, Building2, Briefcase as BriefcaseIcon, MapPin, GraduationCap as EducationIcon, Languages,
-  Plane, Ship, Store, Factory, BarChart, BookMarked, Layers, Settings, FileSpreadsheet, Repeat, AlertCircle, Info, Star
+  ChevronRight, DollarSign, Heart, Binary, Wrench, Briefcase, Home, GraduationCap, Calendar, Laptop, FlaskConical, ChevronDown,
+  TrendingUp, Building, BookOpen, Banknote, Receipt, User, Search, X, Clock, ArrowRight, Filter, Star, ChevronLeft
 } from 'lucide-react'
 import { BlogPost, formatDate } from '@/lib/blogData'
 import { toolsData } from '@/lib/toolsData'
 import { Badge } from '@/components/ui/badge'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 
 interface BlogDashboardProps {
   posts: BlogPost[]
@@ -36,34 +28,87 @@ type DashboardSubcategory = {
 }
 
 const FINANCIAL_SUBCATEGORY_ORDER: string[] = [
-  'loan',
-  'investment',
-  'tax',
-  'currency',
-  'time-based-finance',
-  'banking',
-  'insurance',
-  'real-estate',
-  'credit-card',
-  'retirement',
-  'business',
-  'misc',
+  'loan', 'investment', 'tax', 'currency', 'time-based-finance',
+  'banking', 'insurance', 'real-estate', 'credit-card', 'retirement', 'business', 'misc',
 ]
 
 const POPULAR_FINANCIAL_POSTS_BY_TOOL_ID: string[] = [
-  'sip-calculator',
-  'gst-calculator',
-  'income-tax-calculator',
-  'currency-converter',
-  'personal-loan-emi',
-  'savings-account-interest',
-  'life-insurance-calculator',
-  'rent-vs-buy',
-  'credit-card-payoff',
-  'fire-calculator',
-  'profit-margin',
-  'net-worth',
+  'sip-calculator', 'gst-calculator', 'income-tax-calculator', 'currency-converter',
+  'personal-loan-emi', 'savings-account-interest', 'life-insurance-calculator',
+  'rent-vs-buy', 'credit-card-payoff', 'fire-calculator', 'profit-margin', 'net-worth',
 ]
+
+/* ─── Shared Post Card ─── */
+function PostCard({ post, withLocale, categoryMeta, compact }: {
+  post: DashboardPost
+  withLocale: (p: string) => string
+  categoryMeta: Record<string, { name: string; icon: any; color: string }>
+  compact?: boolean
+}) {
+  const meta = categoryMeta[post.category]
+  const CategoryIcon = meta?.icon || BookOpen
+  const color = meta?.color || 'from-primary/20 to-primary/10'
+
+  return (
+    <Link
+      href={withLocale(`/blog/${post.slug}`)}
+      className={
+        "group relative flex flex-col rounded-2xl border border-border/60 bg-card overflow-hidden transition-all duration-300 " +
+        "hover:shadow-xl hover:shadow-primary/5 hover:border-primary/30 hover:-translate-y-0.5 " +
+        (compact ? "min-h-[160px]" : "min-h-[200px]")
+      }
+    >
+      {/* Top gradient accent */}
+      <div className={`h-1 w-full bg-gradient-to-r ${color} opacity-60 group-hover:opacity-100 transition-opacity`} />
+
+      <div className={compact ? "p-4 flex flex-col flex-1" : "p-5 flex flex-col flex-1"}>
+        {/* Category & reading time */}
+        <div className="flex items-center gap-2 mb-3">
+          <div className={`shrink-0 w-8 h-8 rounded-lg bg-gradient-to-br ${color} flex items-center justify-center`}>
+            <CategoryIcon className="h-4 w-4 text-white" />
+          </div>
+          <Badge variant="secondary" className="text-[10px] px-2 py-0.5 capitalize font-medium">
+            {meta?.name || post.category}
+          </Badge>
+          <span className="ml-auto text-[10px] text-muted-foreground flex items-center gap-1">
+            <Clock className="h-3 w-3" />
+            {post.readingTime} min
+          </span>
+        </div>
+
+        {/* Title */}
+        <h3 className={
+          "font-bold leading-snug group-hover:text-primary transition-colors duration-200 line-clamp-2 " +
+          (compact ? "text-sm" : "text-base")
+        }>
+          {post.title}
+        </h3>
+
+        {/* Description */}
+        {!compact && (
+          <p className="mt-2 text-sm text-muted-foreground line-clamp-2 leading-relaxed flex-1">
+            {post.description}
+          </p>
+        )}
+
+        {/* Footer */}
+        <div className={
+          "flex items-center justify-between text-[11px] text-muted-foreground " +
+          (compact ? "mt-3 pt-2" : "mt-4 pt-3") + " border-t border-border/40"
+        }>
+          <span className="flex items-center gap-1">
+            <User className="h-3 w-3" />
+            {post.author.name}
+          </span>
+          <span>{formatDate(post.publishedAt)}</span>
+        </div>
+      </div>
+
+      {/* Hover indicator */}
+      <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-primary/0 via-primary to-primary/0 scale-x-0 group-hover:scale-x-100 transition-transform duration-500" />
+    </Link>
+  )
+}
 
 export function BlogDashboard({ posts, language, dict }: BlogDashboardProps) {
   const prefix = language && language !== 'en' ? `/${language}` : ''
@@ -73,12 +118,10 @@ export function BlogDashboard({ posts, language, dict }: BlogDashboardProps) {
   useEffect(() => {
     if (typeof window === 'undefined') return
     const mq = window.matchMedia('(min-width: 1024px)')
-
     const apply = () => {
       if (mq.matches) document.body.classList.add('home-dashboard-lock')
       else document.body.classList.remove('home-dashboard-lock')
     }
-
     apply()
     mq.addEventListener('change', apply)
     return () => {
@@ -86,6 +129,14 @@ export function BlogDashboard({ posts, language, dict }: BlogDashboardProps) {
       document.body.classList.remove('home-dashboard-lock')
     }
   }, [])
+
+  /* ─── Search ─── */
+  const [searchQuery, setSearchQuery] = useState('')
+  const [searchFocused, setSearchFocused] = useState(false)
+  const searchRef = useRef<HTMLInputElement>(null)
+
+  /* ─── Mobile category sheet ─── */
+  const [mobileFilterOpen, setMobileFilterOpen] = useState(false)
 
   const categoryMeta = useMemo(() => {
     return {
@@ -100,7 +151,7 @@ export function BlogDashboard({ posts, language, dict }: BlogDashboardProps) {
       scientific: { name: dict.nav?.science || 'Scientific', icon: FlaskConical, color: 'from-violet-500 to-fuchsia-500' },
       investments: { name: 'Investments', icon: TrendingUp, color: 'from-emerald-500 to-teal-500' },
       loans: { name: 'Loans', icon: Banknote, color: 'from-orange-500 to-red-500' },
-      health: { name: dict.nav?.health || 'Health', icon: Heart, color: 'from-pink-500 to-rose-500' },
+      health: { name: dict.nav?.health || 'Health & Fitness', icon: Heart, color: 'from-pink-500 to-rose-500' },
       'real-estate': { name: 'Real Estate', icon: Building, color: 'from-amber-500 to-yellow-500' },
       tax: { name: 'Tax', icon: Receipt, color: 'from-purple-500 to-indigo-500' },
       general: { name: 'General', icon: BookOpen, color: 'from-slate-500 to-gray-500' },
@@ -109,30 +160,16 @@ export function BlogDashboard({ posts, language, dict }: BlogDashboardProps) {
 
   const categories = useMemo(() => {
     const allCategories = Array.from(new Set(posts.map((p) => p.category)))
-
     const perCategory = allCategories
       .map((cat) => {
         const count = posts.filter((p) => p.category === cat).length
         const meta = categoryMeta[cat] || { name: cat, icon: BookOpen, color: 'from-primary/20 to-primary/10' }
-
-        return {
-          id: cat,
-          name: meta.name,
-          icon: meta.icon,
-          color: meta.color,
-          count,
-        }
+        return { id: cat, name: meta.name, icon: meta.icon, color: meta.color, count }
       })
       .sort((a, b) => b.count - a.count)
 
     return [
-      {
-        id: 'all',
-        name: dict.nav?.categories || 'Categories',
-        icon: Star,
-        color: 'from-primary to-primary',
-        count: posts.length,
-      },
+      { id: 'all', name: dict.blog?.allCategories || 'All', icon: Star, color: 'from-primary to-primary', count: posts.length },
       ...perCategory,
     ]
   }, [posts, categoryMeta, dict])
@@ -143,6 +180,7 @@ export function BlogDashboard({ posts, language, dict }: BlogDashboardProps) {
 
   const selectCategory = (id: string) => {
     setActiveCategoryId(id)
+    setSearchQuery('')
     if (id === 'all') {
       setActiveSubcategoryKey(null)
       setExpandedCategoryId(null)
@@ -156,13 +194,10 @@ export function BlogDashboard({ posts, language, dict }: BlogDashboardProps) {
 
   const activeSubcategories = useMemo((): DashboardSubcategory[] => {
     if (activeCategoryId === 'all') return []
-
-    // Prefer the same subcategory list as the tools dashboard for the Financial category.
     if (activeCategoryId === 'financial') {
       const category = (toolsData as any)?.financial
       const raw = category?.subcategories ?? {}
       const byKey = new Map<string, DashboardSubcategory>()
-
       for (const key of Object.keys(raw)) {
         const name = String(raw[key]?.name ?? key)
         const count = posts.filter(
@@ -170,27 +205,17 @@ export function BlogDashboard({ posts, language, dict }: BlogDashboardProps) {
         ).length
         byKey.set(key, { key, name, count })
       }
-
       const orderedKeys = FINANCIAL_SUBCATEGORY_ORDER.filter((k) => byKey.has(k))
-      const remaining = Array.from(byKey.keys())
-        .filter((k) => !orderedKeys.includes(k))
-        .sort((a, b) => a.localeCompare(b))
-
+      const remaining = Array.from(byKey.keys()).filter((k) => !orderedKeys.includes(k)).sort()
       return [...orderedKeys, ...remaining].map((k) => byKey.get(k) as DashboardSubcategory)
     }
-
-    // Fallback: derive subcategories from blog data.
     const map = new Map<string, DashboardSubcategory>()
     for (const p of posts) {
       if (p.category !== activeCategoryId) continue
       const key = (p as DashboardPost).subcategoryKey
       if (!key) continue
       const existing = map.get(key)
-      map.set(key, {
-        key,
-        name: key,
-        count: (existing?.count ?? 0) + 1,
-      })
+      map.set(key, { key, name: key, count: (existing?.count ?? 0) + 1 })
     }
     return Array.from(map.values()).sort((a, b) => b.count - a.count)
   }, [activeCategoryId, posts])
@@ -203,180 +228,429 @@ export function BlogDashboard({ posts, language, dict }: BlogDashboardProps) {
   const categoryPopularPosts = useMemo((): DashboardPost[] => {
     if (activeCategoryId === 'all') return []
     const inCategory = posts.filter((p) => p.category === activeCategoryId) as DashboardPost[]
-
-    // For Financial, order by toolId priority where possible.
     if (activeCategoryId === 'financial') {
       const priorityIndex = new Map<string, number>()
-      for (let i = 0; i < POPULAR_FINANCIAL_POSTS_BY_TOOL_ID.length; i++) {
-        priorityIndex.set(POPULAR_FINANCIAL_POSTS_BY_TOOL_ID[i], i)
-      }
+      POPULAR_FINANCIAL_POSTS_BY_TOOL_ID.forEach((id, i) => priorityIndex.set(id, i))
       const ordered = [...inCategory].sort((a, b) => {
-        const ai = a.toolId && priorityIndex.has(a.toolId) ? (priorityIndex.get(a.toolId) as number) : Number.POSITIVE_INFINITY
-        const bi = b.toolId && priorityIndex.has(b.toolId) ? (priorityIndex.get(b.toolId) as number) : Number.POSITIVE_INFINITY
-        if (ai !== bi) return ai - bi
-        return a.title.localeCompare(b.title)
+        const ai = a.toolId && priorityIndex.has(a.toolId) ? priorityIndex.get(a.toolId)! : Infinity
+        const bi = b.toolId && priorityIndex.has(b.toolId) ? priorityIndex.get(b.toolId)! : Infinity
+        return ai !== bi ? ai - bi : a.title.localeCompare(b.title)
       })
       return ordered.slice(0, 12)
     }
-
     return [...inCategory].sort((a, b) => b.publishedAt.localeCompare(a.publishedAt)).slice(0, 12)
   }, [activeCategoryId, posts])
 
   const filteredPosts = useMemo((): DashboardPost[] => {
-    if (activeCategoryId === 'all') return posts as DashboardPost[]
-    if (!activeSubcategoryKey) return posts.filter((p) => p.category === activeCategoryId) as DashboardPost[]
-    return posts.filter((p) => p.category === activeCategoryId && (p as DashboardPost).subcategoryKey === activeSubcategoryKey) as DashboardPost[]
-  }, [posts, activeCategoryId, activeSubcategoryKey])
+    let result: DashboardPost[]
+    if (activeCategoryId === 'all') result = posts as DashboardPost[]
+    else if (!activeSubcategoryKey) result = posts.filter((p) => p.category === activeCategoryId) as DashboardPost[]
+    else result = posts.filter((p) => p.category === activeCategoryId && (p as DashboardPost).subcategoryKey === activeSubcategoryKey) as DashboardPost[]
+
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase().trim()
+      result = result.filter((p) =>
+        p.title.toLowerCase().includes(q) ||
+        p.description.toLowerCase().includes(q) ||
+        p.tags.some((t) => t.toLowerCase().includes(q)) ||
+        p.category.toLowerCase().includes(q)
+      )
+    }
+    return result
+  }, [posts, activeCategoryId, activeSubcategoryKey, searchQuery])
+
+  /* ─── Breadcrumb ─── */
+  const breadcrumbs = useMemo(() => {
+    const items: { label: string; onClick?: () => void }[] = [
+      { label: dict.blog?.title || 'Blog', onClick: () => selectCategory('all') }
+    ]
+    if (activeCategoryId !== 'all' && activeCategory) {
+      items.push({ label: activeCategory.name, onClick: selectedSubcategory ? () => { setActiveSubcategoryKey(null) } : undefined })
+    }
+    if (selectedSubcategory) {
+      items.push({ label: selectedSubcategory.name })
+    }
+    return items
+  }, [activeCategoryId, activeCategory, selectedSubcategory, dict])
+
+  /* ─── Search bar component (reusable) ─── */
+  const searchBar = (
+    <div className={
+      "relative flex items-center transition-all duration-300 " +
+      (searchFocused ? "ring-2 ring-primary/30" : "") +
+      " rounded-xl border border-border/60 bg-secondary/30 overflow-hidden"
+    }>
+      <Search className="absolute left-3 h-4 w-4 text-muted-foreground pointer-events-none" />
+      <input
+        ref={searchRef}
+        type="text"
+        value={searchQuery}
+        onChange={(e) => setSearchQuery(e.target.value)}
+        onFocus={() => setSearchFocused(true)}
+        onBlur={() => setSearchFocused(false)}
+        placeholder={dict.blog?.searchPlaceholder || "Search articles..."}
+        className="w-full bg-transparent py-2.5 pl-10 pr-10 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none"
+      />
+      {searchQuery && (
+        <button
+          type="button"
+          onClick={() => { setSearchQuery(''); searchRef.current?.focus() }}
+          className="absolute right-3 p-0.5 rounded-full hover:bg-secondary transition-colors"
+        >
+          <X className="h-3.5 w-3.5 text-muted-foreground" />
+        </button>
+      )}
+    </div>
+  )
 
   return (
     <div className="bg-background min-h-screen">
-      {/* Mobile View - Simple List */}
-      <div className="lg:hidden container mx-auto px-4 py-8 space-y-8">
-        <div className="space-y-4 text-center">
-          <h1 className="text-3xl font-bold">{dict.blog?.title || 'Blog'}</h1>
-          <p className="text-muted-foreground">{dict.blog?.subtitle || 'Expert guides and articles'}</p>
+      {/* ════════════════════════════════════════════════ */}
+      {/* ═══ MOBILE & TABLET VIEW ═══ */}
+      {/* ════════════════════════════════════════════════ */}
+      <div className="lg:hidden min-h-screen">
+        {/* Mobile Header */}
+        <div className="sticky top-0 z-30 bg-background/95 backdrop-blur-lg border-b border-border/40">
+          <div className="px-4 pt-4 pb-3 space-y-3">
+            {/* Title row */}
+            <div className="flex items-center justify-between">
+              <div>
+                <h1 className="text-2xl font-bold tracking-tight">{dict.blog?.title || 'Blog'}</h1>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  {filteredPosts.length} {dict.blog?.articles || 'articles'}
+                  {activeCategoryId !== 'all' && ` in ${activeCategory?.name}`}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setMobileFilterOpen(!mobileFilterOpen)}
+                className={
+                  "flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium border transition-all " +
+                  (activeCategoryId !== 'all'
+                    ? "bg-primary/10 border-primary/30 text-primary"
+                    : "bg-secondary/50 border-border/60 text-muted-foreground")
+                }
+              >
+                <Filter className="h-3.5 w-3.5" />
+                {activeCategoryId !== 'all' ? activeCategory?.name : (dict.blog?.filter || 'Filter')}
+              </button>
+            </div>
+
+            {/* Search */}
+            {searchBar}
+          </div>
+
+          {/* Category pills - horizontal scroll */}
+          <div className="px-4 pb-3 -mx-0.5">
+            <div className="flex gap-2 overflow-x-auto scrollbar-none pb-1">
+              {categories.map((c) => {
+                const isActive = c.id === activeCategoryId
+                const CategoryIcon = c.icon || BookOpen
+                return (
+                  <button
+                    key={c.id}
+                    type="button"
+                    onClick={() => { selectCategory(c.id); setMobileFilterOpen(false) }}
+                    className={
+                      "shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all duration-200 " +
+                      (isActive
+                        ? "bg-primary text-primary-foreground shadow-md shadow-primary/20"
+                        : "bg-secondary/50 text-muted-foreground hover:bg-secondary hover:text-foreground")
+                    }
+                  >
+                    <CategoryIcon className="h-3 w-3" />
+                    {c.name}
+                    <span className={
+                      "rounded-full px-1.5 py-0 text-[10px] " +
+                      (isActive ? "bg-white/20" : "bg-secondary")
+                    }>
+                      {c.count}
+                    </span>
+                  </button>
+                )
+              })}
+            </div>
+          </div>
         </div>
-        
-        <div className="grid gap-6">
-          {filteredPosts.map(post => (
-            <Link key={post.slug} href={withLocale(`/blog/${post.slug}`)}>
-              <Card>
-                <CardHeader>
-                  <div className="flex items-center justify-between mb-2">
-                    <Badge variant="secondary">{post.category}</Badge>
-                    <span className="text-xs text-muted-foreground">{formatDate(post.publishedAt)}</span>
-                  </div>
-                  <CardTitle>{post.title}</CardTitle>
-                  <CardDescription className="line-clamp-2">{post.description}</CardDescription>
-                </CardHeader>
-              </Card>
-            </Link>
-          ))}
+
+        {/* Mobile Filter Bottom Sheet */}
+        {mobileFilterOpen && (
+          <div className="fixed inset-0 z-40" onClick={() => setMobileFilterOpen(false)}>
+            <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
+            <div
+              className="absolute bottom-0 left-0 right-0 bg-card rounded-t-2xl border-t border-border/60 max-h-[70vh] overflow-hidden"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Sheet handle */}
+              <div className="flex justify-center pt-3 pb-2">
+                <div className="w-10 h-1 rounded-full bg-border" />
+              </div>
+              
+              <div className="px-4 pb-2 flex items-center justify-between">
+                <h3 className="text-base font-bold">{dict.blog?.categories || 'Categories'}</h3>
+                <button
+                  type="button"
+                  onClick={() => setMobileFilterOpen(false)}
+                  className="p-1.5 rounded-lg hover:bg-secondary transition-colors"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+
+              <div className="overflow-y-auto max-h-[55vh] px-4 pb-6 space-y-1">
+                {categories.map((c) => {
+                  const isActive = c.id === activeCategoryId
+                  const CategoryIcon = c.icon || BookOpen
+                  return (
+                    <button
+                      key={c.id}
+                      type="button"
+                      onClick={() => { selectCategory(c.id); setMobileFilterOpen(false) }}
+                      className={
+                        "w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm transition-all " +
+                        (isActive
+                          ? "bg-primary/10 border border-primary/30 text-foreground font-semibold"
+                          : "text-muted-foreground hover:bg-secondary/50 hover:text-foreground")
+                      }
+                    >
+                      <div className={`shrink-0 w-9 h-9 rounded-lg bg-gradient-to-br ${c.color} flex items-center justify-center`}>
+                        <CategoryIcon className="h-4.5 w-4.5 text-white" />
+                      </div>
+                      <span className="flex-1 text-left">{c.name}</span>
+                      <span className={
+                        "rounded-full px-2.5 py-0.5 text-xs font-medium " +
+                        (isActive ? "bg-primary/20 text-primary" : "bg-secondary text-muted-foreground")
+                      }>
+                        {c.count}
+                      </span>
+                      {isActive && <ChevronRight className="h-4 w-4 text-primary" />}
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Mobile Content */}
+        <div className="px-4 py-4">
+          {/* Breadcrumb (mobile) */}
+          {activeCategoryId !== 'all' && (
+            <div className="flex items-center gap-1.5 text-xs text-muted-foreground mb-4 flex-wrap">
+              {breadcrumbs.map((b, i) => (
+                <span key={i} className="flex items-center gap-1.5">
+                  {i > 0 && <ChevronRight className="h-3 w-3" />}
+                  {b.onClick ? (
+                    <button type="button" onClick={b.onClick} className="hover:text-primary transition-colors">
+                      {b.label}
+                    </button>
+                  ) : (
+                    <span className="text-foreground font-medium">{b.label}</span>
+                  )}
+                </span>
+              ))}
+            </div>
+          )}
+
+          {/* Category overview on "All" */}
+          {activeCategoryId === 'all' && !searchQuery && (
+            <div className="grid grid-cols-2 gap-3 mb-6">
+              {categories.filter((c) => c.id !== 'all' && c.count > 0).map((c) => {
+                const CategoryIcon = c.icon || BookOpen
+                return (
+                  <button
+                    key={c.id}
+                    type="button"
+                    onClick={() => selectCategory(c.id)}
+                    className="group text-left rounded-2xl border border-border/50 bg-card p-4 hover:border-primary/30 hover:shadow-lg transition-all duration-300"
+                  >
+                    <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${c.color} flex items-center justify-center mb-3 group-hover:scale-110 transition-transform`}>
+                      <CategoryIcon className="h-5 w-5 text-white" />
+                    </div>
+                    <div className="font-semibold text-sm group-hover:text-primary transition-colors">{c.name}</div>
+                    <div className="text-xs text-muted-foreground mt-0.5 flex items-center gap-1">
+                      {c.count} {dict.blog?.articles || 'articles'}
+                      <ArrowRight className="h-3 w-3 opacity-0 group-hover:opacity-100 group-hover:translate-x-0.5 transition-all" />
+                    </div>
+                  </button>
+                )
+              })}
+            </div>
+          )}
+
+          {/* Subcategory pills (mobile) */}
+          {activeSubcategories.length > 0 && activeCategoryId !== 'all' && (
+            <div className="mb-4">
+              <div className="flex gap-2 overflow-x-auto scrollbar-none pb-1">
+                <button
+                  type="button"
+                  onClick={() => setActiveSubcategoryKey(null)}
+                  className={
+                    "shrink-0 px-3 py-1.5 rounded-full text-xs font-medium transition-all " +
+                    (!activeSubcategoryKey
+                      ? "bg-primary/10 text-primary border border-primary/30"
+                      : "bg-secondary/50 text-muted-foreground")
+                  }
+                >
+                  All
+                </button>
+                {activeSubcategories.map((sub) => (
+                  <button
+                    key={sub.key}
+                    type="button"
+                    onClick={() => setActiveSubcategoryKey(sub.key)}
+                    className={
+                      "shrink-0 px-3 py-1.5 rounded-full text-xs font-medium transition-all " +
+                      (activeSubcategoryKey === sub.key
+                        ? "bg-primary/10 text-primary border border-primary/30"
+                        : "bg-secondary/50 text-muted-foreground")
+                    }
+                  >
+                    {sub.name} ({sub.count})
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Search results info */}
+          {searchQuery && (
+            <div className="flex items-center justify-between mb-4 px-1">
+              <p className="text-sm text-muted-foreground">
+                {filteredPosts.length} result{filteredPosts.length !== 1 ? 's' : ''} for &ldquo;{searchQuery}&rdquo;
+              </p>
+              <button
+                type="button"
+                onClick={() => setSearchQuery('')}
+                className="text-xs text-primary hover:underline"
+              >
+                Clear
+              </button>
+            </div>
+          )}
+
+          {/* Mobile post cards */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {filteredPosts.map((post) => (
+              <PostCard
+                key={post.slug}
+                post={post}
+                withLocale={withLocale}
+                categoryMeta={categoryMeta}
+                compact
+              />
+            ))}
+          </div>
+
+          {filteredPosts.length === 0 && (
+            <div className="py-16 text-center space-y-3">
+              <div className="w-16 h-16 mx-auto rounded-full bg-secondary/50 flex items-center justify-center">
+                <Search className="h-7 w-7 text-muted-foreground/50" />
+              </div>
+              <p className="text-muted-foreground font-medium">
+                {searchQuery ? 'No articles found' : 'No posts in this category'}
+              </p>
+              <p className="text-sm text-muted-foreground/70">
+                {searchQuery ? 'Try different keywords or clear your search' : 'Check back later for new content'}
+              </p>
+            </div>
+          )}
         </div>
       </div>
 
-      {/* Desktop View - Dashboard Layout */}
+      {/* ════════════════════════════════════════════════ */}
+      {/* ═══ DESKTOP VIEW ═══ */}
+      {/* ════════════════════════════════════════════════ */}
       <div className="hidden lg:block h-[calc(100vh-4rem)] overflow-hidden">
         <div className="h-full w-full box-border px-4 sm:px-6 lg:px-8 py-6 overflow-hidden">
-          <div className="grid h-full min-h-0 grid-cols-1 lg:grid-cols-[260px_1fr] gap-6">
+          <div className="grid h-full min-h-0 grid-cols-[280px_1fr] gap-6">
             
-            {/* Sidebar */}
-            <aside className="hidden lg:block">
-              <div className="h-full rounded-xl border bg-card overflow-hidden flex flex-col min-h-0">
+            {/* ─── Sidebar ─── */}
+            <aside className="h-full">
+              <div className="h-full rounded-2xl border border-border/60 bg-card overflow-hidden flex flex-col min-h-0">
                 <div className="flex-1 min-h-0 overflow-y-auto">
-                  <div className="sticky top-0 z-10 border-b bg-card/95 backdrop-blur px-3 py-3">
-                    <div className="px-1 text-xs font-semibold text-muted-foreground">
+                  {/* Sidebar header */}
+                  <div className="sticky top-0 z-10 border-b border-border/40 bg-card/95 backdrop-blur-lg px-4 py-3">
+                    <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                       {dict.blog?.categories || 'Categories'}
                     </div>
                   </div>
 
-                  <div className="p-3 pr-2 space-y-1">
-                    {categories.map((c, idx) => {
+                  <div className="p-3 space-y-0.5">
+                    {categories.map((c) => {
                       const isActive = c.id === activeCategoryId
                       const isExpanded = c.id !== 'all' && expandedCategoryId === c.id
                       const disabled = c.id !== 'all' && c.count === 0
                       const CategoryIcon = c.icon || BookOpen
                       
                       return (
-                        <div key={c.id} className="space-y-1">
-                        <button
-                          type="button"
-                          onClick={() => {
-                            if (disabled) return
-                            if (c.id === 'all') {
-                              selectCategory('all')
-                              return
+                        <div key={c.id}>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (disabled) return
+                              if (c.id === 'all') { selectCategory('all'); return }
+                              if (c.id === activeCategoryId) {
+                                setExpandedCategoryId((prev) => (prev === c.id ? null : c.id))
+                                return
+                              }
+                              selectCategory(c.id)
+                            }}
+                            disabled={disabled}
+                            className={
+                              "w-full flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm transition-all duration-200 " +
+                              (disabled
+                                ? "text-muted-foreground/40 cursor-not-allowed"
+                                : isActive
+                                ? "bg-primary/10 text-foreground font-semibold border border-primary/20"
+                                : "text-muted-foreground hover:text-foreground hover:bg-secondary/50")
                             }
-                            if (c.id === activeCategoryId) {
-                              setExpandedCategoryId((prev) => (prev === c.id ? null : c.id))
-                              return
-                            }
-                            selectCategory(c.id)
-                          }}
-                          disabled={disabled}
-                          className={
-                            "group relative w-full flex items-center gap-3 rounded-xl px-3 py-3 text-sm transition-all duration-300 overflow-hidden " +
-                            (disabled
-                              ? "text-muted-foreground/50 cursor-not-allowed"
-                              : isActive
-                              ? "bg-gradient-to-r " + (c.color || 'from-primary/20 to-primary/10') + " text-foreground shadow-lg shadow-primary/20 border-2 border-primary/30 scale-[1.02]"
-                              : "text-muted-foreground hover:text-foreground hover:bg-gradient-to-r hover:from-secondary/60 hover:to-secondary/40 hover:scale-[1.03] hover:shadow-md hover:border hover:border-primary/20")
-                          }
-                          style={{
-                            animationDelay: `${idx * 50}ms`,
-                            animation: 'fadeInLeft 0.4s ease-out forwards'
-                          }}
-                        >
-                          {/* Shine effect on hover */}
-                          <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700" />
-                          
-                          {/* Animated glow effect for active state */}
-                          {isActive && (
-                            <div className="absolute inset-0 bg-gradient-to-r from-primary/0 via-primary/20 to-primary/0 animate-pulse" />
-                          )}
-                          
-                          <div className={
-                            "relative shrink-0 w-9 h-9 rounded-xl flex items-center justify-center transition-all duration-300 " + 
-                            (isActive 
-                              ? `bg-gradient-to-br ${c.color} shadow-lg shadow-primary/30` 
-                              : 'bg-secondary/80 group-hover:bg-gradient-to-br group-hover:' + (c.color || 'from-primary/20 to-primary/10') + ' group-hover:scale-110 group-hover:rotate-6 group-hover:shadow-md')
-                          }>
-                            <CategoryIcon className={
-                              "h-5 w-5 transition-all duration-300 " + 
-                              (isActive ? 'text-white drop-shadow-sm' : 'text-muted-foreground group-hover:text-primary group-hover:scale-110')
-                            } />
-                            
-                            {/* Icon glow on active */}
-                            {isActive && (
-                              <div className="absolute inset-0 bg-white/20 rounded-xl blur-sm" />
-                            )}
-                          </div>
-                          
-                          <span className={
-                            "relative truncate font-medium transition-all duration-200 " + 
-                            (isActive ? 'font-bold text-base' : 'group-hover:font-semibold')
-                          }>
-                            {c.name}
-                          </span>
-                          
-                          <div className="relative flex items-center gap-2 ml-auto">
-                            <span className={
-                              "shrink-0 rounded-full px-2.5 py-1 text-xs font-bold transition-all duration-300 " + 
-                              (isActive 
-                                ? 'bg-white/90 dark:bg-gray-900/90 text-primary shadow-sm scale-110' 
-                                : 'bg-secondary/60 text-muted-foreground group-hover:bg-primary/20 group-hover:text-primary group-hover:scale-105')
+                          >
+                            <div className={
+                              "shrink-0 w-8 h-8 rounded-lg flex items-center justify-center transition-all " +
+                              (isActive
+                                ? `bg-gradient-to-br ${c.color} shadow-sm`
+                                : 'bg-secondary/70')
                             }>
-                              {c.count}
-                            </span>
-                            {c.id === 'financial' && isExpanded && activeCategoryId === c.id && activeSubcategories.length ? (
-                              <ChevronDown className="h-4 w-4 text-primary" />
-                            ) : null}
-                          </div>
-                          
-                          {/* Bottom accent line for active */}
-                          {isActive && (
-                            <div className={`absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r ${c.color || 'from-primary to-primary'}`} />
-                          )}
-                        </button>
-
-                        {/* Expand subcategories under selected category */}
-                        {c.id === 'financial' && isExpanded && activeCategoryId === c.id && activeSubcategories.length ? (
-                          <div className="ml-2 mr-1 mt-2 pb-2 space-y-1.5 border-l-2 border-primary/30 pl-3">
-                            <div className="flex items-center justify-between px-1 py-1">
-                              <span className="text-[11px] font-semibold text-primary">Subcategories</span>
-                              {activeSubcategoryKey ? (
-                                <button
-                                  type="button"
-                                  onClick={() => setActiveSubcategoryKey(null)}
-                                  className="text-[10px] font-medium text-muted-foreground hover:text-foreground transition-colors"
-                                >
-                                  Clear
-                                </button>
-                              ) : null}
+                              <CategoryIcon className={
+                                "h-4 w-4 transition-colors " +
+                                (isActive ? 'text-white' : 'text-muted-foreground')
+                              } />
                             </div>
+                            
+                            <span className="truncate flex-1 text-left">{c.name}</span>
+                            
+                            <div className="flex items-center gap-1.5 ml-auto">
+                              <span className={
+                                "rounded-full px-2 py-0.5 text-[10px] font-semibold " +
+                                (isActive
+                                  ? 'bg-primary/20 text-primary'
+                                  : 'bg-secondary/80 text-muted-foreground')
+                              }>
+                                {c.count}
+                              </span>
+                              {isExpanded && isActive && activeSubcategories.length > 0 && (
+                                <ChevronDown className="h-3.5 w-3.5 text-primary" />
+                              )}
+                            </div>
+                          </button>
 
-                            <div className="space-y-1">
-                              {activeSubcategories.map((sub, sidx) => {
+                          {/* Subcategories */}
+                          {isExpanded && isActive && activeSubcategories.length > 0 && (
+                            <div className="ml-4 mt-1 mb-2 space-y-0.5 border-l-2 border-primary/20 pl-3">
+                              <div className="flex items-center justify-between px-1 py-1">
+                                <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Subcategories</span>
+                                {activeSubcategoryKey && (
+                                  <button
+                                    type="button"
+                                    onClick={() => setActiveSubcategoryKey(null)}
+                                    className="text-[10px] text-primary hover:underline"
+                                  >
+                                    Clear
+                                  </button>
+                                )}
+                              </div>
+                              {activeSubcategories.map((sub) => {
                                 const isSubActive = sub.key === activeSubcategoryKey
                                 return (
                                   <button
@@ -384,30 +658,24 @@ export function BlogDashboard({ posts, language, dict }: BlogDashboardProps) {
                                     type="button"
                                     onClick={() => setActiveSubcategoryKey(sub.key)}
                                     className={
-                                      "group relative w-full flex items-center justify-between rounded-lg px-3 py-2 text-xs transition-all duration-200 " +
+                                      "w-full flex items-center justify-between rounded-lg px-3 py-1.5 text-xs transition-all " +
                                       (isSubActive
-                                        ? "bg-gradient-to-r from-primary/15 to-primary/5 text-foreground font-semibold shadow-sm border border-primary/30"
-                                        : "text-muted-foreground hover:text-foreground hover:bg-secondary/70 hover:scale-[1.02] hover:shadow-sm")
+                                        ? "bg-primary/10 text-foreground font-medium border border-primary/20"
+                                        : "text-muted-foreground hover:text-foreground hover:bg-secondary/40")
                                     }
-                                    style={{ animationDelay: `${sidx * 30}ms` }}
                                   >
                                     <span className="truncate">{sub.name}</span>
-                                    <span
-                                      className={
-                                        "ml-2 shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium transition-colors " +
-                                        (isSubActive
-                                          ? 'bg-primary/20 text-primary'
-                                          : 'bg-secondary/80 text-muted-foreground group-hover:bg-primary/10')
-                                      }
-                                    >
+                                    <span className={
+                                      "ml-2 shrink-0 rounded-full px-1.5 py-0 text-[10px] " +
+                                      (isSubActive ? 'bg-primary/20 text-primary' : 'bg-secondary/80 text-muted-foreground')
+                                    }>
                                       {sub.count}
                                     </span>
                                   </button>
                                 )
                               })}
                             </div>
-                          </div>
-                        ) : null}
+                          )}
                         </div>
                       )
                     })}
@@ -416,198 +684,161 @@ export function BlogDashboard({ posts, language, dict }: BlogDashboardProps) {
               </div>
             </aside>
 
-            {/* Main Content */}
+            {/* ─── Main Content ─── */}
             <section className="min-w-0 h-full overflow-hidden">
-              <div className="h-full overflow-y-auto rounded-xl border bg-card">
+              <div className="h-full overflow-y-auto rounded-2xl border border-border/60 bg-card">
                 {/* Sticky header */}
-                <div className="sticky top-0 z-10 border-b bg-card/95 backdrop-blur px-4 sm:px-6 py-4">
-                  <div className="flex items-start justify-between gap-4">
+                <div className="sticky top-0 z-10 border-b border-border/40 bg-card/95 backdrop-blur-lg px-6 py-4 space-y-3">
+                  {/* Breadcrumb */}
+                  <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                    {breadcrumbs.map((b, i) => (
+                      <span key={i} className="flex items-center gap-1.5">
+                        {i > 0 && <ChevronRight className="h-3 w-3" />}
+                        {b.onClick ? (
+                          <button type="button" onClick={b.onClick} className="hover:text-primary transition-colors">
+                            {b.label}
+                          </button>
+                        ) : (
+                          <span className="text-foreground font-medium">{b.label}</span>
+                        )}
+                      </span>
+                    ))}
+                  </div>
+
+                  <div className="flex items-center justify-between gap-4">
                     <div>
-                      <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">
-                        {activeCategory?.name || 'Blog'}
+                      <h1 className="text-2xl font-bold tracking-tight">
+                        {selectedSubcategory ? selectedSubcategory.name : (activeCategory?.name || 'Blog')}
                       </h1>
-                      <p className="mt-1 text-sm text-muted-foreground">
-                        {activeCategory?.count || 0} {dict.blog?.articles || 'articles'}
+                      <p className="mt-0.5 text-sm text-muted-foreground">
+                        {filteredPosts.length} {dict.blog?.articles || 'articles'}
                       </p>
+                    </div>
+                    {/* Desktop search */}
+                    <div className="w-72">
+                      {searchBar}
                     </div>
                   </div>
                 </div>
 
-                <div className="px-4 sm:px-6 py-6">
-                  {activeCategoryId === 'all' && (
-                    <div className="grid grid-cols-2 xl:grid-cols-3 gap-4">
-                      {categories
-                        .filter((c) => c.id !== 'all' && c.count > 0)
-                        .map((c, idx) => {
-                          const CategoryIcon = c.icon || BookOpen
-                          const categoryColor = c.color || 'from-primary/20 to-primary/10'
-
-                          return (
-                            <button
-                              key={c.id}
-                              type="button"
-                              onClick={() => selectCategory(c.id)}
-                              className="group relative text-left rounded-xl border border-border bg-gradient-to-br from-background to-secondary/30 p-6 hover:shadow-2xl hover:shadow-primary/20 hover:border-primary/50 hover:-translate-y-1 transition-all duration-300 overflow-hidden"
-                              style={{
-                                animationDelay: `${idx * 60}ms`,
-                                animation: 'fadeInUp 0.5s ease-out forwards',
-                              }}
-                            >
-                              <div className="absolute inset-0 bg-gradient-to-br from-transparent via-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-                              <div className={`absolute inset-0 bg-gradient-to-br ${categoryColor} opacity-0 group-hover:opacity-10 transition-opacity duration-300`} />
-
-                              <div className="relative flex items-start gap-4">
-                                <div className={`shrink-0 w-14 h-14 rounded-xl bg-gradient-to-br ${categoryColor} flex items-center justify-center group-hover:scale-110 group-hover:rotate-6 transition-all duration-300 shadow-lg group-hover:shadow-xl group-hover:shadow-primary/30`}>
-                                  <CategoryIcon className="h-7 w-7 text-primary group-hover:scale-110 transition-transform duration-300" />
-                                </div>
-
-                                <div className="flex-1 min-w-0">
-                                  <div className="font-bold text-lg truncate group-hover:text-primary transition-colors duration-200">
-                                    {c.name}
-                                  </div>
-                                  <div className="mt-1.5 flex items-center gap-2">
-                                    <span className="text-sm text-muted-foreground group-hover:text-foreground transition-colors">
-                                      {c.count} {dict.blog?.articles || 'articles'}
-                                    </span>
-                                    <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-primary group-hover:translate-x-1 transition-all duration-200" />
-                                  </div>
-                                </div>
-                              </div>
-
-                              <div className={`absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r ${categoryColor} transform scale-x-0 group-hover:scale-x-100 transition-transform duration-500`} />
-                            </button>
-                          )
-                        })}
+                <div className="px-6 py-6">
+                  {/* Search results info */}
+                  {searchQuery && (
+                    <div className="flex items-center justify-between mb-4">
+                      <p className="text-sm text-muted-foreground">
+                        {filteredPosts.length} result{filteredPosts.length !== 1 ? 's' : ''} for &ldquo;{searchQuery}&rdquo;
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => setSearchQuery('')}
+                        className="text-xs text-primary hover:underline"
+                      >
+                        Clear search
+                      </button>
                     </div>
                   )}
 
-                  {activeCategoryId !== 'all' && activeCategory && !selectedSubcategory && (
+                  {/* Category grid (when "All" selected and no search) */}
+                  {activeCategoryId === 'all' && !searchQuery && (
+                    <div className="grid grid-cols-2 xl:grid-cols-3 gap-4 mb-8">
+                      {categories.filter((c) => c.id !== 'all' && c.count > 0).map((c) => {
+                        const CategoryIcon = c.icon || BookOpen
+                        return (
+                          <button
+                            key={c.id}
+                            type="button"
+                            onClick={() => selectCategory(c.id)}
+                            className="group text-left rounded-2xl border border-border/50 bg-gradient-to-br from-background to-secondary/20 p-6 hover:shadow-xl hover:border-primary/30 hover:-translate-y-0.5 transition-all duration-300 overflow-hidden"
+                          >
+                            <div className="flex items-start gap-4">
+                              <div className={`shrink-0 w-12 h-12 rounded-xl bg-gradient-to-br ${c.color} flex items-center justify-center group-hover:scale-110 transition-transform duration-300 shadow-md`}>
+                                <CategoryIcon className="h-6 w-6 text-white" />
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <div className="font-bold text-base truncate group-hover:text-primary transition-colors">
+                                  {c.name}
+                                </div>
+                                <div className="mt-1 flex items-center gap-1.5">
+                                  <span className="text-sm text-muted-foreground">
+                                    {c.count} {dict.blog?.articles || 'articles'}
+                                  </span>
+                                  <ArrowRight className="h-3.5 w-3.5 text-muted-foreground group-hover:text-primary group-hover:translate-x-1 transition-all" />
+                                </div>
+                              </div>
+                            </div>
+                          </button>
+                        )
+                      })}
+                    </div>
+                  )}
+
+                  {/* All posts (when "All" selected with search active) */}
+                  {activeCategoryId === 'all' && searchQuery && (
+                    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                      {filteredPosts.map((post) => (
+                        <PostCard key={post.slug} post={post} withLocale={withLocale} categoryMeta={categoryMeta} />
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Recent posts under all categories */}
+                  {activeCategoryId === 'all' && !searchQuery && (
                     <div className="space-y-4">
-                      <div className="flex items-center justify-between border-b pb-2">
-                        <h3 className="text-sm font-semibold text-muted-foreground">Popular posts</h3>
-                        <span className="text-xs text-muted-foreground">{categoryPopularPosts.length}</span>
+                      <div className="flex items-center justify-between">
+                        <h3 className="text-base font-bold">{dict.blog?.latestArticles || 'Latest Articles'}</h3>
                       </div>
-
-                      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
-                        {categoryPopularPosts.map((post, idx) => {
-                          const CategoryIcon = categoryMeta[post.category]?.icon || BookOpen
-
-                          return (
-                            <Link
-                              key={post.slug}
-                              href={withLocale(`/blog/${post.slug}`)}
-                              className="group relative rounded-xl border border-border bg-gradient-to-br from-background to-secondary/20 p-5 hover:shadow-xl hover:shadow-primary/10 hover:border-primary/50 hover:-translate-y-1 transition-all duration-300 overflow-hidden flex flex-col"
-                              style={{ animationDelay: `${idx * 40}ms` }}
-                            >
-                              <div className="absolute inset-0 bg-gradient-to-br from-transparent via-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-
-                              <div className="relative flex items-start gap-4 mb-3">
-                                <div className="shrink-0 mt-0.5 h-12 w-12 rounded-xl bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center group-hover:scale-110 group-hover:rotate-3 transition-all duration-300 shadow-sm group-hover:shadow-md group-hover:shadow-primary/20">
-                                  <CategoryIcon className="h-6 w-6 text-primary group-hover:text-primary transition-all duration-300" />
-                                </div>
-                                <div className="min-w-0 flex-1">
-                                  <div className="flex items-center gap-2 mb-1">
-                                    <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-5">
-                                      {post.category}
-                                    </Badge>
-                                    <span className="text-[10px] text-muted-foreground">{post.readingTime} min read</span>
-                                  </div>
-                                  <div className="font-bold text-base leading-tight group-hover:text-primary transition-colors duration-200">
-                                    {post.title}
-                                  </div>
-                                </div>
-                              </div>
-
-                              <div className="relative text-sm text-muted-foreground line-clamp-3 leading-relaxed group-hover:text-foreground/80 transition-colors flex-1">
-                                {post.description}
-                              </div>
-
-                              <div className="relative mt-4 flex items-center justify-between text-xs text-muted-foreground border-t pt-3">
-                                <div className="flex items-center gap-1.5">
-                                  <User className="h-3 w-3" />
-                                  <span>{post.author.name}</span>
-                                </div>
-                                <div className="flex items-center gap-1.5">
-                                  <Calendar className="h-3 w-3" />
-                                  <span>{formatDate(post.publishedAt)}</span>
-                                </div>
-                              </div>
-
-                              <div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-primary/0 via-primary/50 to-primary/0 transform scale-x-0 group-hover:scale-x-100 transition-transform duration-500" />
-                            </Link>
-                          )
-                        })}
+                      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                        {(posts as DashboardPost[])
+                          .sort((a, b) => b.publishedAt.localeCompare(a.publishedAt))
+                          .slice(0, 9)
+                          .map((post) => (
+                            <PostCard key={post.slug} post={post} withLocale={withLocale} categoryMeta={categoryMeta} />
+                          ))}
                       </div>
+                    </div>
+                  )}
 
-                      {activeSubcategories.length ? (
-                        <div className="pt-2 text-center text-xs text-muted-foreground">
-                          Select a subcategory from the left to see all posts.
+                  {/* Category selected - show posts */}
+                  {activeCategoryId !== 'all' && (
+                    <div className="space-y-4">
+                      {!searchQuery && !selectedSubcategory && (
+                        <div className="flex items-center justify-between">
+                          <h3 className="text-sm font-semibold text-muted-foreground">
+                            {dict.blog?.popularPosts || 'Popular posts'}
+                          </h3>
+                          <span className="text-xs text-muted-foreground">
+                            {(selectedSubcategory ? filteredPosts : categoryPopularPosts).length} posts
+                          </span>
                         </div>
-                      ) : null}
+                      )}
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                        {(selectedSubcategory || searchQuery ? filteredPosts : categoryPopularPosts).map((post) => (
+                          <PostCard key={post.slug} post={post} withLocale={withLocale} categoryMeta={categoryMeta} />
+                        ))}
+                      </div>
+
+                      {!selectedSubcategory && !searchQuery && activeSubcategories.length > 0 && (
+                        <p className="pt-2 text-center text-xs text-muted-foreground">
+                          {dict.blog?.selectSubcategory || 'Select a subcategory from the sidebar to see all posts'}
+                        </p>
+                      )}
                     </div>
                   )}
 
-                  {selectedSubcategory && (
-                    <div className="space-y-4">
-                      <div className="flex items-center justify-between border-b pb-2">
-                        <h3 className="text-sm font-semibold text-muted-foreground">{selectedSubcategory.name}</h3>
-                        <span className="text-xs text-muted-foreground">{selectedSubcategory.count}</span>
+                  {/* Empty state */}
+                  {filteredPosts.length === 0 && (activeCategoryId !== 'all' || searchQuery) && (
+                    <div className="py-16 text-center space-y-3">
+                      <div className="w-16 h-16 mx-auto rounded-full bg-secondary/50 flex items-center justify-center">
+                        <Search className="h-7 w-7 text-muted-foreground/50" />
                       </div>
-
-                      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
-                        {filteredPosts.map((post, idx) => {
-                          const CategoryIcon = categoryMeta[post.category]?.icon || BookOpen
-                          return (
-                            <Link
-                              key={post.slug}
-                              href={withLocale(`/blog/${post.slug}`)}
-                              className="group relative rounded-xl border border-border bg-gradient-to-br from-background to-secondary/20 p-5 hover:shadow-xl hover:shadow-primary/10 hover:border-primary/50 hover:-translate-y-1 transition-all duration-300 overflow-hidden flex flex-col"
-                              style={{ animationDelay: `${idx * 40}ms` }}
-                            >
-                              <div className="absolute inset-0 bg-gradient-to-br from-transparent via-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-
-                              <div className="relative flex items-start gap-4 mb-3">
-                                <div className="shrink-0 mt-0.5 h-12 w-12 rounded-xl bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center group-hover:scale-110 group-hover:rotate-3 transition-all duration-300 shadow-sm group-hover:shadow-md group-hover:shadow-primary/20">
-                                  <CategoryIcon className="h-6 w-6 text-primary group-hover:text-primary transition-all duration-300" />
-                                </div>
-                                <div className="min-w-0 flex-1">
-                                  <div className="flex items-center gap-2 mb-1">
-                                    <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-5">
-                                      {post.category}
-                                    </Badge>
-                                    <span className="text-[10px] text-muted-foreground">{post.readingTime} min read</span>
-                                  </div>
-                                  <div className="font-bold text-base leading-tight group-hover:text-primary transition-colors duration-200">
-                                    {post.title}
-                                  </div>
-                                </div>
-                              </div>
-
-                              <div className="relative text-sm text-muted-foreground line-clamp-3 leading-relaxed group-hover:text-foreground/80 transition-colors flex-1">
-                                {post.description}
-                              </div>
-
-                              <div className="relative mt-4 flex items-center justify-between text-xs text-muted-foreground border-t pt-3">
-                                <div className="flex items-center gap-1.5">
-                                  <User className="h-3 w-3" />
-                                  <span>{post.author.name}</span>
-                                </div>
-                                <div className="flex items-center gap-1.5">
-                                  <Calendar className="h-3 w-3" />
-                                  <span>{formatDate(post.publishedAt)}</span>
-                                </div>
-                              </div>
-
-                              <div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-primary/0 via-primary/50 to-primary/0 transform scale-x-0 group-hover:scale-x-100 transition-transform duration-500" />
-                            </Link>
-                          )
-                        })}
-                      </div>
+                      <p className="text-muted-foreground font-medium">
+                        {searchQuery ? 'No articles found' : 'No posts in this category'}
+                      </p>
+                      <p className="text-sm text-muted-foreground/70">
+                        {searchQuery ? 'Try different keywords or clear your search' : 'Check back later for new content'}
+                      </p>
                     </div>
-                  )}
-
-                  {activeCategoryId !== 'all' && selectedSubcategory && filteredPosts.length === 0 && (
-                    <div className="py-10 text-center text-sm text-muted-foreground">No posts found in this subcategory.</div>
                   )}
                 </div>
               </div>

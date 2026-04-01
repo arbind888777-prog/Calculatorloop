@@ -368,28 +368,25 @@ export function AdvancedAgeCalculator() {
 
           <div className="space-y-2">
             <Label className="text-sm font-medium uppercase tracking-wide text-muted-foreground">Calculate As Of</Label>
-            <div className="flex gap-3">
-              <Input
-                type="date"
-                value={asOfDate}
-                onChange={(e) => {
-                  setAsOfDate(e.target.value)
-                  setUseLiveMode(false)
-                }}
-                className="flex-1 p-4 rounded-xl bg-secondary/20 border border-transparent hover:border-primary/30 focus:border-primary/50 focus:ring-4 focus:ring-primary/10 transition-all outline-none font-medium text-lg"
-              />
-              <div className="w-64">
-                <VoiceTimeInput
-                  value={asOfTime}
-                  onChange={(next) => {
-                    setAsOfTime(next)
-                    setUseLiveMode(false)
-                  }}
-                  disabled={useLiveMode}
-                  showSeconds
-                />
-              </div>
-            </div>
+            <Input
+              type="date"
+              value={asOfDate}
+              onChange={(e) => {
+                setAsOfDate(e.target.value)
+                setUseLiveMode(false)
+              }}
+              className="w-full p-4 rounded-xl bg-secondary/20 border border-transparent hover:border-primary/30 focus:border-primary/50 focus:ring-4 focus:ring-primary/10 transition-all outline-none font-medium text-lg"
+            />
+            <Label className="text-sm font-medium uppercase tracking-wide text-muted-foreground mt-3 block">Time (Optional)</Label>
+            <VoiceTimeInput
+              value={asOfTime}
+              onChange={(next) => {
+                setAsOfTime(next)
+                setUseLiveMode(false)
+              }}
+              disabled={useLiveMode}
+              showSeconds
+            />
             <div className="flex items-center gap-2 mt-2">
               <input
                 type="checkbox"

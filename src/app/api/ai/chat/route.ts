@@ -11,9 +11,10 @@ import { tryBuildNumberTutorResponse } from '@/lib/logic-ai/numberTutorResponder
 import { tryBuildTrigProofResponse } from '@/lib/logic-ai/trigProofResponder';
 import { tryBuildUnitConversionResponse } from '@/lib/logic-ai/unitConverter';
 import { tryBuildWordProblemResponse } from '@/lib/logic-ai/wordProblemSolver';
-import { askGemini, saveLearnedAnswer } from '@/lib/logic-ai/gemini';
+import { tryBuildHindiMathResponse } from '@/lib/logic-ai/hindiMathSolver';
 import { findBestFinanceQA } from '@/lib/logic-ai/qaBank';
 import { guardUserMessage } from '@/lib/logic-ai/inputGuard';
+import { tryBuildReferenceTableResponse } from '@/lib/logic-ai/referenceTableSolver';
 
 const SUPPORTED_LOCALES = new Set([
   'en',
@@ -199,6 +200,14 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Message is required' }, { status: 400 });
     }
 
+    // Sanitize history for context awareness
+    const chatHistory = Array.isArray(history)
+      ? history
+          .filter((m: any) => m && typeof m.content === 'string' && m.content.trim())
+          .map((m: any) => ({ role: m.role === 'user' ? 'user' : 'assistant', content: m.content as string }))
+          .slice(-12)
+      : [];
+
     // --- Context Awareness Logic ---
     let effectiveMessage = correctTypos(message);
     let contextTopic = '';
@@ -261,13 +270,30 @@ export async function POST(req: Request) {
 
     effectiveMessage = guard.message;
 
-    // 0. Check Custom Knowledge Base (Manual Training)
+    // 0. Check Custom Knowledge Base (Manual Training) — exact pattern matches, instant
     const lowerMsg = effectiveMessage.toLowerCase();
+
+    // Smart pattern matching: short patterns (≤3 chars like "hi","hey") use word-boundary
+    // regex so they don't false-match inside words like "bechi", "machine", etc.
+    const matchesPattern = (msg: string, pattern: string): boolean => {
+      if (pattern.length <= 4) {
+        // Word boundary match for short patterns
+        const escaped = pattern.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        return new RegExp(`(?:^|\\s|[^a-zA-Z0-9\u0900-\u097F])${escaped}(?:$|\\s|[^a-zA-Z0-9\u0900-\u097F])`, 'i').test(msg)
+          || msg === pattern; // exact match
+      }
+      return msg.includes(pattern);
+    };
+
     const knowledgeMatch = customKnowledge.find(k => 
-      k.patterns.some(p => lowerMsg.includes(p))
+      k.patterns.some(p => matchesPattern(lowerMsg, p))
     );
 
-    if (knowledgeMatch) {
+    // If message has 2+ numbers, it's likely a calculation → let solvers handle it
+    // instead of showing generic formula knowledge.
+    const hasCalculationNumbers = (effectiveMessage.match(/-?\d+(?:\.\d+)?/g) || []).length >= 2;
+
+    if (knowledgeMatch && !hasCalculationNumbers) {
       responseContent += knowledgeMatch.answer[lang] + "\n\n";
       
       // If knowledge item has suggested tools, fetch them
@@ -287,15 +313,12 @@ export async function POST(req: Request) {
         }
       }
 
-      // Add a short next-step suggestion (category-neutral, language-aware)
       responseContent += `\n${templates.nextStep}\n\n`;
       responseContent += `${buildNextStepSuggestion(effectiveMessage, lang)}\n`;
-
       return jsonAssistant(responseContent);
     }
 
     // 0.1 Finance Q&A Bank (auto-generated, local, high confidence)
-    // This prevents irrelevant blog/tool snippets and reduces Gemini usage.
     const financeHit = findBestFinanceQA(effectiveMessage);
     if (financeHit) {
       let fullResponse = financeHit.item.a;
@@ -304,7 +327,21 @@ export async function POST(req: Request) {
       return jsonAssistant(fullResponse);
     }
 
-    // 0.15 Geometry area (offline)
+    // ─────────────────────────────────────────────────────────────
+    // LOCAL SOLVERS: All questions handled locally (no external API)
+    // Calculator Loop AI — fully self-contained.
+    // ─────────────────────────────────────────────────────────────
+
+    // Hindi/Hinglish/English Math Solver (comprehensive — sums, %, profit/loss, SI/CI, HCF/LCM, ratio, GST, EMI)
+    const hindiMathResponse = tryBuildHindiMathResponse(effectiveMessage, lang);
+    if (hindiMathResponse) {
+      let fullResponse = hindiMathResponse;
+      fullResponse += `\n\n${templates.nextStep}\n\n`;
+      fullResponse += `${buildNextStepSuggestion(effectiveMessage, lang)}\n`;
+      return jsonAssistant(fullResponse);
+    }
+
+    // Geometry area (offline)
     const areaResponse = tryBuildGeometryAreaResponse(effectiveMessage, lang);
     if (areaResponse) {
       let fullResponse = areaResponse;
@@ -313,7 +350,7 @@ export async function POST(req: Request) {
       return jsonAssistant(fullResponse);
     }
 
-    // 0.2 Numbers tutor (types + big-int calculations)
+    // Numbers tutor (types + big-int calculations)
     const numberTutorResponse = tryBuildNumberTutorResponse(effectiveMessage, lang);
     if (numberTutorResponse) {
       let fullResponse = numberTutorResponse;
@@ -322,7 +359,7 @@ export async function POST(req: Request) {
       return jsonAssistant(fullResponse);
     }
 
-    // 0.3 Trig proof (common Class 12 identities)
+    // Trig proof (common Class 12 identities)
     const trigProofResponse = tryBuildTrigProofResponse(effectiveMessage, lang);
     if (trigProofResponse) {
       let fullResponse = trigProofResponse;
@@ -331,7 +368,7 @@ export async function POST(req: Request) {
       return jsonAssistant(fullResponse);
     }
 
-    // 0.35 Algebra identities (common exam patterns)
+    // Algebra identities (common exam patterns)
     const algebraIdentityResponse = tryBuildAlgebraIdentityResponse(effectiveMessage, lang);
     if (algebraIdentityResponse) {
       let fullResponse = algebraIdentityResponse;
@@ -340,7 +377,16 @@ export async function POST(req: Request) {
       return jsonAssistant(fullResponse);
     }
 
-    // 0.36 Unit Conversion
+    // Reference Tables (squares, cubes, roots, powers, multiplication tables)
+    const refTableResponse = tryBuildReferenceTableResponse(effectiveMessage, lang);
+    if (refTableResponse) {
+      let fullResponse = refTableResponse;
+      fullResponse += `\n\n${templates.nextStep}\n\n`;
+      fullResponse += `${buildNextStepSuggestion(effectiveMessage, lang)}\n`;
+      return jsonAssistant(fullResponse);
+    }
+
+    // Unit Conversion
     const unitResponse = tryBuildUnitConversionResponse(effectiveMessage, lang);
     if (unitResponse) {
       let fullResponse = unitResponse;
@@ -349,7 +395,7 @@ export async function POST(req: Request) {
       return jsonAssistant(fullResponse);
     }
 
-    // 0.37 Word Problems
+    // Word Problems
     const wordProblemResponse = tryBuildWordProblemResponse(effectiveMessage, lang);
     if (wordProblemResponse) {
       let fullResponse = wordProblemResponse;
@@ -358,8 +404,7 @@ export async function POST(req: Request) {
       return jsonAssistant(fullResponse);
     }
 
-    // 0.5 Formula Knowledge (Formula + basic calculation)
-    // 0.4 Math solver (expressions + equations + steps)
+    // Math solver (expressions + equations + steps)
     const mathSolveResponse = tryBuildMathSolveResponse(effectiveMessage, lang);
     if (mathSolveResponse) {
       let fullResponse = mathSolveResponse;
@@ -368,7 +413,7 @@ export async function POST(req: Request) {
       return jsonAssistant(fullResponse);
     }
 
-    // 0.5 Formula Knowledge (Formula + basic calculation)
+    // Formula Knowledge (Formula + basic calculation)
     const formulaResponse = tryBuildFormulaResponse(effectiveMessage, lang);
     if (formulaResponse) {
       let fullResponse = formulaResponse;
@@ -377,15 +422,12 @@ export async function POST(req: Request) {
       return jsonAssistant(fullResponse);
     }
 
-    // 1. Search for relevant tools (Calculators)
-    // Avoid noisy suggestions for calculation questions unless the user explicitly wants a calculator.
+    // ─────────────────────────────────────────────────────────────
+    // LAST RESORT: Tool discovery + blogs
+    // ─────────────────────────────────────────────────────────────
     let relevantTools = wantsDiscovery ? searchToolsWithContext(effectiveMessage) : [];
-
-    // 2. Search for relevant content (blogs/knowledge-base)
-    // Avoid showing guide snippets for calculation-style questions.
     const relevantBlogs = calcLike ? [] : searchBlogs(effectiveMessage);
 
-    // If the best-matching blog is for a specific tool, prioritize that tool in suggestions.
     const blogToolId = relevantBlogs[0]?.post?.toolId;
     if (blogToolId) {
       const blogTool = getToolByIdWithContext(blogToolId);
@@ -394,38 +436,18 @@ export async function POST(req: Request) {
         if (!exists) {
           relevantTools = [blogTool, ...relevantTools];
         } else {
-          // Move it to front
           relevantTools = [blogTool, ...relevantTools.filter((t) => t.tool.id !== blogTool.tool.id)];
         }
       }
     }
 
-    // 3. Construct the response
-    // Strategy:
-    // - For calculation-like queries: use Gemini (after local solvers) to get a direct answer.
-    // - For guide/discovery queries: show content/tools.
-    const isComplexQuery = effectiveMessage.split(' ').length > 5;
-    let geminiUsed = false;
-
-    // Prefer content guides only when not calculation-like
     if (relevantBlogs.length > 0) {
       const topBlog = relevantBlogs[0];
       responseContent += `${templates.blogIntro}\n\n`;
       responseContent += `${topBlog.matchingParagraph}\n\n`;
     }
 
-    // Gemini path: calculation-like OR complex question with no good local content
-    if (calcLike || (isComplexQuery && relevantBlogs.length === 0)) {
-      const geminiAnswer = await askGemini(effectiveMessage);
-      if (geminiAnswer) {
-        responseContent = geminiAnswer;
-        saveLearnedAnswer(effectiveMessage, geminiAnswer);
-        geminiUsed = true;
-      }
-    }
-
-    // If Gemini wasn't used and we have tools (discovery flow), use tool intro
-    if (!geminiUsed && relevantTools.length > 0 && relevantBlogs.length === 0) {
+    if (relevantTools.length > 0 && relevantBlogs.length === 0) {
       const topTool = relevantTools[0].tool;
       if (lang === 'hi') {
         responseContent += `Aapke sawal ke liye **${topTool.title}** sabse sahi hai. ${topTool.description}\n\n`;
@@ -434,9 +456,8 @@ export async function POST(req: Request) {
       }
     }
 
-    // Append tools only when user is actually looking for a calculator/tool
     if (wantsDiscovery && relevantTools.length > 0) {
-      responseContent += `\n\n${geminiUsed ? (lang === 'hi' ? '**Sambandhit Tools:**' : '**Related Tools:**') : templates.toolsIntro}\n\n`;
+      responseContent += `\n\n${templates.toolsIntro}\n\n`;
       relevantTools.slice(0, 5).forEach(({ tool, subcategoryName }) => {
         responseContent += `- [${tool.title}](/calculator/${tool.id})\n`;
         responseContent += `  ${tool.description}\n`;
@@ -445,14 +466,7 @@ export async function POST(req: Request) {
     }
 
     if (!responseContent) {
-      // Final fallback: Gemini once, then template fallback
-      const geminiAnswer = await askGemini(effectiveMessage);
-      if (geminiAnswer) {
-        responseContent = geminiAnswer;
-        saveLearnedAnswer(effectiveMessage, geminiAnswer);
-      } else {
-        responseContent = templates.fallback;
-      }
+      responseContent = templates.fallback;
     }
 
     responseContent += `\n\n${templates.nextStep}\n\n`;

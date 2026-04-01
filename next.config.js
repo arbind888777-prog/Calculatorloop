@@ -20,6 +20,8 @@ const nextConfig = {
     ignoreBuildErrors: true,
   },
 
+  turbopack: {},
+
   experimental: {
     optimizePackageImports: ['lucide-react'],
     optimizeCss: true,

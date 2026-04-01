@@ -477,6 +477,17 @@ export const implementedCalculatorList = [
   'torque-calculator',
   'centripetal-force',
   'free-fall-calculator',
+
+  // Kinematics — Advanced Tools
+  'average-velocity-calculator',
+  'displacement-calculator',
+  'kinematic-distance-calculator',
+  'kinematic-time-calculator',
+  'final-velocity-calculator',
+  'initial-velocity-calculator',
+  'equation-of-motion-calculator',
+  'time-of-flight-calculator',
+
   'gravitational-force',
   'density-calculator',
   'pressure-calculator',
@@ -486,8 +497,15 @@ export const implementedCalculatorList = [
   'kinetic-energy',
   'potential-energy',
   'work-calculator',
+  'power-calculator',
   'mechanical-energy',
   'efficiency-calculator',
+  'rotational-inertia',
+  'collision-calculator',
+  'angular-velocity',
+  'angular-acceleration',
+  'angular-momentum',
+  'spring-constant',
   'ohms-law',
   'power-consumption',
   'voltage-divider',
@@ -497,6 +515,11 @@ export const implementedCalculatorList = [
   'led-resistor',
   'battery-capacity',
   'frequency-wavelength',
+  'escape-velocity',
+  'orbital-velocity',
+  'keplers-law',
+  'unit-converter',
+  'water-intake-calculator',
 
   // Everyday Life Tools - Priority 1 Implementation
   // Time & Productivity (13 tools)

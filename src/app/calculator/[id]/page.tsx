@@ -9,6 +9,9 @@ import { RelatedCalculators } from '@/components/calculators/RelatedCalculators'
 import { getMergedTranslations } from '@/lib/translations'
 import { localizeToolMeta } from '@/lib/toolLocalization'
 import { getSiteUrl } from '@/lib/siteUrl'
+import { FAQSection } from '@/components/calculators/ui/FAQSection'
+import { CalculatorSchema, FAQSchema, HowToSchema } from '@/components/seo/AdvancedSchema'
+import { getCalculatorSeoProfile } from '@/lib/calculatorSeo'
 
 function normalizeCalculatorId(raw: string): string {
   const decoded = (() => {
@@ -67,17 +70,41 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
   const pathname = `${prefix}/calculator/${id}`
   const baseUrl = getSiteUrl()
   const canonical = `${baseUrl}${pathname}`
+  const seoProfile = getCalculatorSeoProfile({
+    id,
+    title: meta.title,
+    description: meta.description,
+    categoryId: info.categoryId,
+    categoryName: info.categoryName,
+  })
 
   return {
     title: `${meta.title} - Free Online Calculator | Calculator Loop`,
-    description: `${meta.description} Accurate, fast, and free online ${meta.title} with instant results.`,
-    keywords: [meta.title, `${meta.title} online`, 'financial calculator', 'free calculator', info.categoryName],
+    description: seoProfile.summary,
+    keywords: seoProfile.keywords,
+    authors: [{ name: 'Calculator Loop Team' }],
+    creator: 'Calculator Loop',
+    publisher: 'Calculator Loop',
+    category: info.categoryName,
+    classification: seoProfile.articleSection,
+    robots: {
+      index: true,
+      follow: true,
+      nocache: false,
+      googleBot: {
+        index: true,
+        follow: true,
+        'max-video-preview': -1,
+        'max-image-preview': 'large',
+        'max-snippet': -1,
+      },
+    },
     alternates: {
       canonical,
     },
     openGraph: {
       title: `${meta.title} - Free Online Calculator`,
-      description: meta.description,
+      description: seoProfile.summary,
       type: 'website',
       url: canonical,
       siteName: 'Calculator Loop',
@@ -86,7 +113,7 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
     twitter: {
       card: 'summary_large_image',
       title: `${meta.title} - Free Online Calculator`,
-      description: meta.description,
+      description: seoProfile.summary,
       images: ['/twitter-image'],
     }
   }
@@ -123,21 +150,43 @@ export default async function CalculatorPage({ params }: { params: Promise<{ id:
         })
       : null
 
+    const seoProfile = categoryInfo && meta
+      ? getCalculatorSeoProfile({
+          id,
+          title: meta.title,
+          description: meta.description,
+          categoryId: categoryInfo.categoryId,
+          categoryName: categoryInfo.categoryName,
+        })
+      : null
+
     // If missing data, return 404 rather than throwing a server error.
-    if (!CalculatorComponent || !categoryInfo) {
+    if (!CalculatorComponent || !categoryInfo || !meta || !seoProfile) {
       notFound()
     }
+
+    const canonicalUrl = `${baseUrl}${pathname}`
 
     return (
       <div className="min-h-screen bg-background pb-16">
         <StructuredData 
-          title={meta?.title ?? categoryInfo.tool.title}
-          description={meta?.description ?? categoryInfo.tool.description}
+          title={meta.title}
+          description={seoProfile.summary}
           categoryId={categoryInfo.categoryId}
           categoryName={categoryInfo.categoryName} 
           pathname={pathname}
           baseUrl={baseUrl}
+          featureList={seoProfile.featureList}
+          applicationCategory={seoProfile.applicationCategory}
         />
+        <CalculatorSchema
+          name={meta.title}
+          description={seoProfile.summary}
+          url={canonicalUrl}
+          category={categoryInfo.categoryName}
+        />
+        <FAQSchema faqs={seoProfile.faqs} />
+        <HowToSchema name={`How to use ${meta.title}`} description={meta.description} steps={seoProfile.howToSteps} />
         
         <div className="container mx-auto px-4 pt-6">
           <div className="mb-6">
@@ -146,21 +195,45 @@ export default async function CalculatorPage({ params }: { params: Promise<{ id:
           
           <CalculatorComponent 
             id={id} 
-            title={meta?.title ?? categoryInfo.tool.title}
-            description={meta?.description ?? categoryInfo.tool.description}
+            title={meta.title}
+            description={meta.description}
           />
 
-          <section className="mt-10 rounded-lg border bg-card p-6 text-card-foreground">
-            <h2 className="text-xl font-semibold">About {meta?.title ?? categoryInfo.tool.title}</h2>
+          <section className="mt-10 rounded-2xl border bg-card p-6 text-card-foreground shadow-sm">
+            <h2 className="text-xl font-semibold">About {meta.title}</h2>
             <p className="mt-2 text-muted-foreground">
-              {meta?.description ?? categoryInfo.tool.description} Updated for 2026 with fast, accurate results on mobile and desktop.
+              {seoProfile.summary}
             </p>
-            <ul className="mt-4 grid gap-2 text-sm text-muted-foreground md:grid-cols-2">
-              <li>Instant calculation with clear outputs</li>
-              <li>No signup, free to use</li>
-              <li>Works on mobile, tablet, and desktop</li>
-              <li>Useful for quick planning and comparisons</li>
-            </ul>
+            <div className="mt-6 grid gap-6 lg:grid-cols-2">
+              <div>
+                <h3 className="text-base font-semibold">Why this page helps</h3>
+                <ul className="mt-3 grid gap-2 text-sm text-muted-foreground">
+                  {seoProfile.benefitPoints.map((point) => (
+                    <li key={point}>{point}</li>
+                  ))}
+                </ul>
+              </div>
+              <div>
+                <h3 className="text-base font-semibold">How to use it well</h3>
+                <ol className="mt-3 grid gap-2 text-sm text-muted-foreground">
+                  {seoProfile.howToSteps.map((step) => (
+                    <li key={step}>{step}</li>
+                  ))}
+                </ol>
+              </div>
+            </div>
+            <div className="mt-6 rounded-xl border bg-background/60 p-4">
+              <h3 className="text-base font-semibold">Expert tips</h3>
+              <ul className="mt-3 grid gap-2 text-sm text-muted-foreground md:grid-cols-3">
+                {seoProfile.expertTips.map((tip) => (
+                  <li key={tip}>{tip}</li>
+                ))}
+              </ul>
+            </div>
+          </section>
+
+          <section className="mt-10 rounded-2xl border bg-card p-6 text-card-foreground shadow-sm">
+            <FAQSection faqs={seoProfile.faqs} />
           </section>
           
           <RelatedCalculators 

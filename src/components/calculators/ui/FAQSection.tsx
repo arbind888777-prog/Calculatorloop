@@ -39,14 +39,15 @@ const FAQItem = ({ question, answer, isOpen, onClick }: FAQItemProps) => (
 
 interface FAQSectionProps {
   faqs: Array<{ question: string; answer: string }>
+  title?: string
 }
 
-export const FAQSection = ({ faqs }: FAQSectionProps) => {
+export const FAQSection = ({ faqs, title = 'Frequently Asked Questions (FAQ)' }: FAQSectionProps) => {
   const [openIndex, setOpenIndex] = useState<number | null>(null)
 
   return (
     <div className="mt-12 border-t border-border/50 pt-10">
-      <h3 className="text-2xl font-bold mb-6">Frequently Asked Questions (FAQ)</h3>
+      <h3 className="text-2xl font-bold mb-6">{title}</h3>
       <div className="space-y-2">
         {faqs.map((faq, index) => (
           <FAQItem

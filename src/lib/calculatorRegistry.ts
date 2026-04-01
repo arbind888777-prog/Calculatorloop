@@ -17,6 +17,17 @@ const genericPhysicsTool = dynamic(() =>
   import('@/components/calculators/categories/physics/GenericPhysicsTool').then(m => ({ default: m.GenericPhysicsTool }))
 )
 
+const advancedKinematicsTool = dynamic(() =>
+  import('@/components/calculators/categories/physics/AdvancedKinematicsTools').then(m => ({ default: m.AdvancedKinematicsCalculator }))
+)
+
+const advancedKinematicsToolIds = [
+  'velocity-calculator', 'average-velocity-calculator', 'acceleration-calculator',
+  'displacement-calculator', 'kinematic-distance-calculator', 'kinematic-time-calculator',
+  'final-velocity-calculator', 'initial-velocity-calculator', 'equation-of-motion-calculator',
+  'free-fall-calculator', 'projectile-motion', 'time-of-flight-calculator',
+]
+
 const genericEverydayTool = dynamic(() =>
   import('@/components/calculators/categories/everyday/GenericEverydayTool').then(m => ({ default: m.GenericEverydayTool }))
 )
@@ -1179,7 +1190,24 @@ const genericMathToolIds: string[] = [
   'binomial-series-calculator',
   'legendre-polynomial-calculator',
   'bessel-function-calculator',
-  'gamma-function-calculator'
+  'gamma-function-calculator',
+  'vector-add-subtract',
+  'vector-scalar-multiply',
+  'vector-magnitude-norm',
+  'vector-dot-product-angle',
+  'vector-cross-product-3d',
+  'vector-projection-rejection',
+  'vector-orthogonality-check',
+  'gram-schmidt-orthonormalization',
+  'matrix-vector-multiplication',
+  'linear-combination-solver',
+  'span-basis-independence',
+  'solve-linear-system-advanced',
+  'matrix-inverse-advanced',
+  'rank-determinant-advanced',
+  'eigensystem-calculator',
+  'svd-calculator',
+  'pca-variance-calculator'
 ]
 
 const genericHealthToolIds = [
@@ -1561,6 +1589,8 @@ export const calculatorComponents: Record<string, any> = {
   ...genericHealthToolIds.reduce((acc, id) => ({ ...acc, [id]: genericHealthTool }), {}),
   ...genericBusinessToolIds.reduce((acc, id) => ({ ...acc, [id]: genericBusinessTool }), {}),
   ...genericPhysicsToolIds.reduce((acc, id) => ({ ...acc, [id]: genericPhysicsTool }), {}),
+  // Advanced Kinematics Tools — override generic physics for these IDs
+  ...advancedKinematicsToolIds.reduce((acc, id) => ({ ...acc, [id]: advancedKinematicsTool }), {}),
   ...genericEverydayToolIds.reduce((acc, id) => ({ ...acc, [id]: genericEverydayTool }), {}),
   ...genericEducationToolIds.reduce((acc, id) => ({ ...acc, [id]: genericEducationTool }), {}),
   ...genericConstructionToolIds.reduce((acc, id) => ({ ...acc, [id]: genericConstructionTool }), {}),
@@ -1798,7 +1828,7 @@ export const calculatorComponents: Record<string, any> = {
   'lean-body-mass': dynamic(() => import('@/components/calculators/categories/health/AdvancedBodyMeasurementTools').then(m => ({ default: m.AdvancedLeanBodyMassCalculator }))),
   'waist-hip-ratio': dynamic(() => import('@/components/calculators/categories/health/AdvancedBodyMeasurementTools').then(m => ({ default: m.AdvancedWaistHipRatioCalculator }))),
   'protein-calculator': dynamic(() => import('@/components/calculators/categories/health/AdvancedNutritionCalculators').then(m => ({ default: m.AdvancedProteinCalculatorV2 }))),
-  'calories-burned': dynamic(() => import('@/components/calculators/categories/health/AdvancedExercisePerformanceCalculators').then(m => ({ default: m.CaloriesBurnedAdvancedCalculator }))),
+    'calories-burned': dynamic(() => import('@/components/calculators/categories/health/AdvancedExercisePerformanceSuite').then(m => ({ default: m.AdvancedCaloriesBurnedCalculator }))),
   'target-heart-rate': dynamic(() => import('@/components/calculators/categories/health/AdvancedHeartHealthCalculators2').then(m => ({ default: m.AdvancedTargetHeartRateCalculator }))),
   'sleep-calculator': dynamic(() => import('@/components/calculators/categories/health/AdvancedSleepLifestyleCalculators').then(m => ({ default: m.SleepTimingCalculator }))),
 
@@ -1868,16 +1898,16 @@ export const calculatorComponents: Record<string, any> = {
   // The initial spread at the top of this object already covers all generic fallbacks.
 
   // ─── Health - Exercise & Performance (Advanced Suite) ────────────────────────
-  'one-rep-max': dynamic(() => import('@/components/calculators/categories/health/AdvancedExercisePerformanceCalculators').then(m => ({ default: m.AdvancedOneRepMaxCalculator }))),
-  'vo2-max-calculator': dynamic(() => import('@/components/calculators/categories/health/AdvancedExercisePerformanceCalculators').then(m => ({ default: m.AdvancedVO2MaxCalculator }))),
+  'one-rep-max': dynamic(() => import('@/components/calculators/categories/health/AdvancedExercisePerformanceSuite').then(m => ({ default: m.AdvancedOneRepMaxCalculator }))),
+  'vo2-max-calculator': dynamic(() => import('@/components/calculators/categories/health/AdvancedExercisePerformanceSuite').then(m => ({ default: m.AdvancedVO2MaxCalculator }))),
   'max-heart-rate-calculator': dynamic(() => import('@/components/calculators/categories/health/AdvancedExercisePerformanceCalculators2').then(m => ({ default: m.AdvancedMaxHeartRateCalculator }))),
   'karvonen-formula': dynamic(() => import('@/components/calculators/categories/health/AdvancedHeartHealthCalculators3').then(m => ({ default: m.AdvancedKarvonenCalculator }))),
-  'pace-calculator': dynamic(() => import('@/components/calculators/categories/health/AdvancedExercisePerformanceCalculators').then(m => ({ default: m.AdvancedPaceCalculator }))),
-  'workout-intensity': dynamic(() => import('@/components/calculators/categories/health/AdvancedExercisePerformanceCalculators').then(m => ({ default: m.WorkoutIntensityCalculator }))),
-  'running-cadence-calculator': dynamic(() => import('@/components/calculators/categories/health/AdvancedExercisePerformanceCalculators').then(m => ({ default: m.RunningCadenceCalculator }))),
-  'stride-length-calculator': dynamic(() => import('@/components/calculators/categories/health/AdvancedExercisePerformanceCalculators').then(m => ({ default: m.StrideLengthCalculator }))),
-  'running-distance-time': dynamic(() => import('@/components/calculators/categories/health/AdvancedExercisePerformanceCalculators').then(m => ({ default: m.RunningDistanceTimeCalculator }))),
-  'cycling-pace-calculator': dynamic(() => import('@/components/calculators/categories/health/AdvancedExercisePerformanceCalculators').then(m => ({ default: m.CyclingPaceCalculator }))),
+  'pace-calculator': dynamic(() => import('@/components/calculators/categories/health/AdvancedExercisePerformanceSuite').then(m => ({ default: m.AdvancedPaceCalculator }))),
+  'workout-intensity': dynamic(() => import('@/components/calculators/categories/health/AdvancedExercisePerformanceSuite').then(m => ({ default: m.AdvancedWorkoutIntensityCalculator }))),
+  'running-cadence-calculator': dynamic(() => import('@/components/calculators/categories/health/AdvancedExercisePerformanceSuite').then(m => ({ default: m.AdvancedRunningCadenceCalculator }))),
+  'stride-length-calculator': dynamic(() => import('@/components/calculators/categories/health/AdvancedExercisePerformanceSuite').then(m => ({ default: m.AdvancedStrideLengthCalculator }))),
+  'running-distance-time': dynamic(() => import('@/components/calculators/categories/health/AdvancedExercisePerformanceSuite').then(m => ({ default: m.AdvancedRunningDistanceTimeCalculator }))),
+  'cycling-pace-calculator': dynamic(() => import('@/components/calculators/categories/health/AdvancedExercisePerformanceSuite').then(m => ({ default: m.AdvancedCyclingPaceCalculator }))),
   'calories-burned-walking': dynamic(() => import('@/components/calculators/categories/health/AdvancedExercisePerformanceCalculators2').then(m => ({ default: m.AdvancedCaloriesBurnedWalkingCalculator }))),
   'calories-burned-running': dynamic(() => import('@/components/calculators/categories/health/AdvancedExercisePerformanceCalculators2').then(m => ({ default: m.AdvancedCaloriesBurnedRunningCalculator }))),
   'swimming-calories-burned': dynamic(() => import('@/components/calculators/categories/health/AdvancedExercisePerformanceCalculators2').then(m => ({ default: m.AdvancedSwimmingCaloriesCalculator }))),
@@ -1897,8 +1927,8 @@ export const calculatorComponents: Record<string, any> = {
   'squat-strength-calculator': dynamic(() => import('@/components/calculators/categories/health/AdvancedExercisePerformanceCalculators6').then(m => ({ default: m.AdvancedSquatStrengthCalculator }))),
   'deadlift-calculator': dynamic(() => import('@/components/calculators/categories/health/AdvancedExercisePerformanceCalculators6').then(m => ({ default: m.AdvancedDeadliftCalculator }))),
   'wilks-score-calculator': dynamic(() => import('@/components/calculators/categories/health/AdvancedExercisePerformanceCalculators6').then(m => ({ default: m.AdvancedWilksScoreCalculator }))),
-  'training-zone-calculator': dynamic(() => import('@/components/calculators/categories/health/AdvancedExercisePerformanceCalculators').then(m => ({ default: m.AdvancedTrainingZoneCalculator }))),
-  'met-calculator': dynamic(() => import('@/components/calculators/categories/health/AdvancedExercisePerformanceCalculators').then(m => ({ default: m.AdvancedMETCalculator }))),
+  'training-zone-calculator': dynamic(() => import('@/components/calculators/categories/health/AdvancedExercisePerformanceSuite').then(m => ({ default: m.AdvancedTrainingZoneCalculator }))),
+  'met-calculator': dynamic(() => import('@/components/calculators/categories/health/AdvancedExercisePerformanceSuite').then(m => ({ default: m.AdvancedMETCalculator }))),
   'strength-volume-calculator': dynamic(() => import('@/components/calculators/categories/health/AdvancedExercisePerformanceCalculators2').then(m => ({ default: m.AdvancedStrengthVolumeCalculator }))),
   'workout-recovery-time': dynamic(() => import('@/components/calculators/categories/health/AdvancedExercisePerformanceCalculators2').then(m => ({ default: m.WorkoutRecoveryTimeCalculator }))),
   'heart-rate-reserve': dynamic(() => import('@/components/calculators/categories/health/AdvancedExercisePerformanceCalculators2').then(m => ({ default: m.HeartRateReserveCalculator }))),
@@ -2854,6 +2884,9 @@ export const calculatorComponents: Record<string, any> = {
 
   // Technology aliases
   'password-entropy-calculator': genericTechnologyTool,
+
+  // Advanced Age Calculator (overrides generic datetime tool)
+  'age-calculator': dynamic(() => import('@/components/calculators/categories/misc/AdvancedAgeCalculator').then(m => ({ default: m.AdvancedAgeCalculator }))),
 }
 
 export const implementedCalculatorIds = new Set(Object.keys(calculatorComponents))

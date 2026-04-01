@@ -14,9 +14,10 @@ const extractNumbers = (s: string) => {
 const hasOperatorSymbol = (s: string) => /[+\-*/×÷()]/.test(s);
 
 const hasOperatorWordCue = (s: string) =>
-  /\b(add|plus|sum|total|subtract|minus|difference|multiply|times|into|divide|divided|quotient)\b/i.test(s) ||
-  /\b(jod|jodo|jodna|jod do|ghata|ghatao|minus|guna|guniya|multiply|bhag|bhaag|divide)\b/i.test(s) ||
-  /जोड़|घट|गुणा|भाग|कुल|जमा|माइनस|प्लस|डिवाइड/i.test(s);
+  /\b(add|plus|sum|total|subtract|minus|difference|multiply|times|into|divide|divided|quotient|average|ausat|percentage|percent|profit|loss|interest|ratio)\b/i.test(s) ||
+  /\b(jod|jodo|jodna|jod do|ghata|ghatao|minus|guna|guniya|multiply|bhag|bhaag|divide|yog|yogfal|antar|ghatav|labh|hani|byaj|pratishat|ausat|average)\b/i.test(s) ||
+  /\b(se .* tak|ka yog|ka antar|ki ausat|ka labh|ka hani|ka byaj|ka pratishat)\b/i.test(s) ||
+  /योग|जोड़|घट|गुणा|भाग|कुल|जमा|माइनस|प्लस|डिवाइड|अन्तर|औसत|लाभ|हानि|ब्याज|प्रतिशत/i.test(s);
 
 const looksLikeJustPunctuation = (s: string) => {
   const cleaned = stripNoise(s);
@@ -86,7 +87,9 @@ export const guardUserMessage = (rawMessage: string, lang: 'en' | 'hi'): InputGu
   }
 
   // If user gave 2+ numbers but operation is unclear.
-  if (numbers.length >= 2 && !hasOperatorSymbol(message) && !hasOperatorWordCue(message) && hasMathIntentWord && !hasPlaceValueCue) {
+  // Skip this check if the message is a proper sentence (5+ words) — likely a valid question.
+  const wordCount = message.split(/\s+/).length;
+  if (numbers.length >= 2 && !hasOperatorSymbol(message) && !hasOperatorWordCue(message) && hasMathIntentWord && !hasPlaceValueCue && wordCount < 5) {
     const [a, b] = numbers;
     return {
       kind: 'clarify',

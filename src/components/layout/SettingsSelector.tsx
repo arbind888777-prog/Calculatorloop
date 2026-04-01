@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { useSettings } from "@/components/providers/SettingsProvider"
 import { useTheme } from "next-themes"
+import { toolsData } from '@/lib/toolsData'
 
 export function SettingsSelector() {
   const router = useRouter()
@@ -45,10 +46,42 @@ export function SettingsSelector() {
     return path || '/'
   }
 
+  const findCategoryForCalc = (id: string): string | null => {
+    for (const [categoryId, category] of Object.entries(toolsData)) {
+      for (const sub of Object.values(category.subcategories ?? {})) {
+        if ((sub as any).calculators.find((c: any) => c.id === id)) return categoryId
+      }
+    }
+    return null
+  }
+
+  const buildLangPath = (basePath: string, code: string): string => {
+    const parts = basePath.split('/').filter(Boolean)
+
+    // basePath = /calculator/{id}
+    if (parts.length === 2 && parts[0] === 'calculator') {
+      const calcId = parts[1]
+      if (code === 'en') return basePath
+      const cat = findCategoryForCalc(calcId)
+      return cat ? `/${code}/${cat}/${calcId}` : `/${code}${basePath}`
+    }
+
+    // basePath = /{category}/{id} (after locale strip from /{lang}/{category}/{id})
+    if (parts.length === 2 && (toolsData as any)[parts[0]]) {
+      const [cat, calcId] = parts
+      if (code === 'en') return `/calculator/${calcId}`
+      return `/${code}/${cat}/${calcId}`
+    }
+
+    // Other pages (/, /about, /blog, etc.)
+    if (code === 'en') return basePath
+    return `/${code}${basePath === '/' ? '' : basePath}`
+  }
+
   const handleLanguageChange = (code: string) => {
     setLanguage(code)
     const basePath = stripLocale(pathname || '/')
-    const nextPath = code === 'en' ? basePath : `/${code}${basePath === '/' ? '' : basePath}`
+    const nextPath = buildLangPath(basePath, code)
     router.push(nextPath)
     router.refresh()
   }

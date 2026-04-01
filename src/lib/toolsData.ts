@@ -914,6 +914,29 @@ const baseToolsData: Record<string, Category> = {
           { id: 'bessel-function-calculator', title: 'Bessel Function Calculator', description: 'Calculate Bessel functions.', icon: 'fas fa-wave-square', action: 'Calculate Now' },
           { id: 'gamma-function-calculator', title: 'Gamma Function Calculator', description: 'Calculate Gamma function values.', icon: 'fas fa-exclamation', action: 'Calculate Now' },
         ]
+      },
+      'linear-algebra-vectors': {
+        name: '🔸 Linear Algebra & Vectors',
+        icon: 'fas fa-vector-square',
+        calculators: [
+          { id: 'vector-add-subtract', title: 'Vector Addition & Subtraction', description: 'Add and subtract vectors component-wise with step-by-step solution.', icon: 'fas fa-plus', action: 'Calculate Now' },
+          { id: 'vector-scalar-multiply', title: 'Scalar Multiplication Calculator', description: 'Multiply a vector by a scalar and visualize the scaling effect.', icon: 'fas fa-times', action: 'Calculate Now' },
+          { id: 'vector-magnitude-norm', title: 'Vector Magnitude & Norm Calculator', description: 'Calculate L1, L2 and Infinity norms and normalize vectors.', icon: 'fas fa-ruler', action: 'Calculate Now' },
+          { id: 'vector-dot-product-angle', title: 'Dot Product & Angle Calculator', description: 'Compute dot product and angle between two vectors using cosine formula.', icon: 'fas fa-angle-double-right', action: 'Calculate Now' },
+          { id: 'vector-cross-product-3d', title: '3D Cross Product Calculator', description: 'Compute 3D cross product, find perpendicular vectors and parallelogram area.', icon: 'fas fa-cube', action: 'Calculate Now' },
+          { id: 'vector-projection-rejection', title: 'Vector Projection & Rejection', description: 'Compute projection of one vector onto another and orthogonal rejection component.', icon: 'fas fa-arrow-right', action: 'Calculate Now' },
+          { id: 'vector-orthogonality-check', title: 'Orthogonality & Orthonormality Check', description: 'Check if vectors are orthogonal, orthonormal or linearly dependent.', icon: 'fas fa-check-double', action: 'Calculate Now' },
+          { id: 'gram-schmidt-orthonormalization', title: 'Gram–Schmidt Orthonormalization', description: 'Apply Gram–Schmidt process to produce an orthonormal basis from any set of vectors.', icon: 'fas fa-sort-amount-up', action: 'Calculate Now' },
+          { id: 'matrix-vector-multiplication', title: 'Matrix–Vector Multiplication', description: 'Multiply an m×n matrix by an n-vector step by step and interpret the result.', icon: 'fas fa-th', action: 'Calculate Now' },
+          { id: 'linear-combination-solver', title: 'Linear Combination Solver', description: 'Determine coefficients to express a target vector as a linear combination of given vectors.', icon: 'fas fa-layer-group', action: 'Calculate Now' },
+          { id: 'span-basis-independence', title: 'Span, Basis & Linear Independence', description: 'Check linear independence and find the basis and span of a set of vectors.', icon: 'fas fa-project-diagram', action: 'Calculate Now' },
+          { id: 'solve-linear-system-advanced', title: 'Advanced Linear System Solver', description: 'Solve Ax = b using Gaussian elimination with partial pivoting and augmented matrix visualization.', icon: 'fas fa-calculator', action: 'Calculate Now' },
+          { id: 'matrix-inverse-advanced', title: 'Matrix Inverse Calculator', description: 'Compute the inverse of a square matrix via row reduction and verify A·A⁻¹ = I.', icon: 'fas fa-undo', action: 'Calculate Now' },
+          { id: 'rank-determinant-advanced', title: 'Rank & Determinant Calculator', description: 'Find matrix rank using row echelon form and calculate determinant by cofactor expansion.', icon: 'fas fa-hashtag', action: 'Calculate Now' },
+          { id: 'eigensystem-calculator', title: 'Eigenvalue & Eigenvector Calculator', description: 'Compute eigenvalues and eigenvectors, diagonalization and characteristic polynomial.', icon: 'fas fa-vector-square', action: 'Calculate Now' },
+          { id: 'svd-calculator', title: 'Singular Value Decomposition (SVD)', description: 'Decompose a matrix into U, Σ, Vᵀ and compute singular values for data compression and PCA.', icon: 'fas fa-cut', action: 'Calculate Now' },
+          { id: 'pca-variance-calculator', title: 'PCA & Explained Variance Calculator', description: 'Perform Principal Component Analysis via covariance matrix, find principal components and explained variance ratio.', icon: 'fas fa-chart-bar', action: 'Calculate Now' },
+        ]
       }
     }
   },
@@ -1099,6 +1122,14 @@ const baseToolsData: Record<string, Category> = {
           { id: 'impulse-calculator', title: 'Impulse Calculator', description: 'Calculate change in momentum.', icon: 'fas fa-hand-rock', action: 'Calculate Now' },
           { id: 'collision-calculator', title: 'Collision Calculator', description: 'Analyze elastic and inelastic collisions.', icon: 'fas fa-car-crash', action: 'Calculate Now' },
           { id: 'free-fall-calculator', title: 'Free Fall Calculator', description: 'Calculate velocity and distance in free fall.', icon: 'fas fa-arrow-down', action: 'Calculate Now' },
+          { id: 'average-velocity-calculator', title: 'Average Velocity Calculator', description: 'Calculate average velocity from displacement and time interval.', icon: 'fas fa-gauge-high', action: 'Calculate Now' },
+          { id: 'displacement-calculator', title: 'Displacement Calculator', description: 'Calculate displacement using s = ut + ½at².', icon: 'fas fa-arrows-alt-h', action: 'Calculate Now' },
+          { id: 'kinematic-distance-calculator', title: 'Distance Calculator (Kinematics)', description: 'Calculate total distance from speed, time, and acceleration.', icon: 'fas fa-ruler-horizontal', action: 'Calculate Now' },
+          { id: 'kinematic-time-calculator', title: 'Time Calculator (Kinematics)', description: 'Calculate time from distance and speed.', icon: 'fas fa-clock', action: 'Calculate Now' },
+          { id: 'final-velocity-calculator', title: 'Final Velocity Calculator', description: 'Calculate final velocity using v = u + at with step-by-step.', icon: 'fas fa-forward', action: 'Calculate Now' },
+          { id: 'initial-velocity-calculator', title: 'Initial Velocity Calculator', description: 'Calculate initial velocity using u = v − at.', icon: 'fas fa-backward', action: 'Calculate Now' },
+          { id: 'equation-of-motion-calculator', title: 'Equation of Motion Calculator', description: 'Universal solver for all 3 equations of motion.', icon: 'fas fa-book', action: 'Calculate Now' },
+          { id: 'time-of-flight-calculator', title: 'Time of Flight Calculator', description: 'Calculate how long a projectile stays in the air.', icon: 'fas fa-plane-departure', action: 'Calculate Now' },
           { id: 'gravitational-force', title: 'Gravitational Force Calculator', description: 'Calculate force between two masses.', icon: 'fas fa-globe', action: 'Calculate Now' },
           { id: 'escape-velocity', title: 'Escape Velocity Calculator', description: 'Calculate speed to escape gravity.', icon: 'fas fa-rocket', action: 'Calculate Now' },
           { id: 'orbital-velocity', title: 'Orbital Velocity Calculator', description: 'Calculate speed of orbiting object.', icon: 'fas fa-satellite', action: 'Calculate Now' },
@@ -1994,6 +2025,115 @@ const baseToolsData: Record<string, Category> = {
           { id: 'carbon-footprint', title: 'Carbon Footprint Calculator', description: 'Calculate CO₂ emissions.', icon: 'fas fa-leaf', action: 'Calculate Now' },
           { id: 'solar-radiation', title: 'Solar Radiation Calculator', description: 'Calculate solar irradiance.', icon: 'fas fa-sun', action: 'Calculate Now' },
           { id: 'haversine-distance', title: 'Haversine Distance Calculator', description: 'Calculate great circle distance on Earth.', icon: 'fas fa-globe', action: 'Calculate Now' },
+        ]
+      },
+      'physics-core': {
+        name: '⚛️ Physics',
+        icon: 'fas fa-atom',
+        calculators: [
+          { id: 'velocity-calculator', title: 'Velocity Calculator', description: 'Calculate velocity from distance and time with smart input and unit conversion.', icon: 'fas fa-gauge-high', action: 'Open Tool' },
+          { id: 'average-velocity-calculator', title: 'Average Velocity Calculator', description: 'Find average velocity from displacement and time interval.', icon: 'fas fa-gauge', action: 'Open Tool' },
+          { id: 'acceleration-calculator', title: 'Acceleration Calculator', description: 'Calculate acceleration from change in velocity over time.', icon: 'fas fa-rocket', action: 'Open Tool' },
+          { id: 'displacement-calculator', title: 'Displacement Calculator', description: 'Calculate displacement using standard equations of motion.', icon: 'fas fa-arrows-left-right', action: 'Open Tool' },
+          { id: 'kinematic-distance-calculator', title: 'Distance Calculator', description: 'Calculate motion distance using speed, time, and acceleration.', icon: 'fas fa-ruler-horizontal', action: 'Open Tool' },
+          { id: 'kinematic-time-calculator', title: 'Time Calculator', description: 'Calculate motion time from distance, speed, and acceleration.', icon: 'fas fa-clock', action: 'Open Tool' },
+          { id: 'final-velocity-calculator', title: 'Final Velocity Calculator', description: 'Calculate final velocity using initial velocity, acceleration, and time.', icon: 'fas fa-forward', action: 'Open Tool' },
+          { id: 'initial-velocity-calculator', title: 'Initial Velocity Calculator', description: 'Calculate initial velocity from final velocity, acceleration, and time.', icon: 'fas fa-backward', action: 'Open Tool' },
+          { id: 'equation-of-motion-calculator', title: 'Equation of Motion Calculator', description: 'Solve SUVAT motion problems with step-by-step working.', icon: 'fas fa-book', action: 'Open Tool' },
+          { id: 'free-fall-calculator', title: 'Free Fall Calculator', description: 'Calculate velocity, time, and displacement in free fall.', icon: 'fas fa-arrow-down', action: 'Open Tool' },
+          { id: 'projectile-motion', title: 'Projectile Motion Calculator', description: 'Calculate range, max height, and time of flight with graph support.', icon: 'fas fa-share', action: 'Open Tool' },
+          { id: 'time-of-flight-calculator', title: 'Time of Flight Calculator', description: 'Calculate how long a projectile stays in the air.', icon: 'fas fa-plane-departure', action: 'Open Tool' },
+        ]
+      },
+      'electrical-science': {
+        name: '🔌 Electrical',
+        icon: 'fas fa-plug',
+        calculators: [
+          { id: 'ohms-law', title: 'Basic Electricity & Ohm\'s Law', description: 'Calculate voltage, current, and resistance in basic circuits.', icon: 'fas fa-bolt', action: 'Open Tool' },
+          { id: 'resistance-calculator', title: 'Circuit Analysis', description: 'Estimate resistance and material-based circuit behavior.', icon: 'fas fa-diagram-project', action: 'Open Tool' },
+          { id: 'voltage-divider', title: 'Series Circuits', description: 'Model series circuit voltage distribution.', icon: 'fas fa-share-nodes', action: 'Open Tool' },
+          { id: 'current-divider', title: 'Parallel Circuits', description: 'Analyze current split in parallel branches.', icon: 'fas fa-code-branch', action: 'Open Tool' },
+          { id: 'power-consumption', title: 'Power Calculations', description: 'Estimate electrical power usage and load demand.', icon: 'fas fa-battery-half', action: 'Open Tool' },
+          { id: 'capacitance-calculator', title: 'Capacitance', description: 'Work with capacitor sizing and stored charge.', icon: 'fas fa-battery-full', action: 'Open Tool' },
+          { id: 'led-resistor', title: 'Electric Potential', description: 'Use voltage drop and resistance in practical LED circuits.', icon: 'fas fa-lightbulb', action: 'Open Tool' },
+          { id: 'battery-capacity', title: 'Electromagnetic Induction Support', description: 'Estimate runtime and electrical energy storage for practical systems.', icon: 'fas fa-charging-station', action: 'Open Tool' },
+        ]
+      },
+      'chemistry-science': {
+        name: '🧪 Chemistry',
+        icon: 'fas fa-flask-vial',
+        calculators: [
+          { id: 'scientific-notation-calculator', title: 'Basic Chemistry Calculations', description: 'Handle scientific notation used in atomic and reaction calculations.', icon: 'fas fa-superscript', action: 'Open Tool' },
+          { id: 'significant-figures-calculator', title: 'Atomic Structure & Mole Concept Support', description: 'Apply measurement precision for chemistry lab and mole-based problems.', icon: 'fas fa-ruler', action: 'Open Tool' },
+          { id: 'unit-converter', title: 'Stoichiometry & Solutions Support', description: 'Convert chemistry-related units used in concentration and gas law problems.', icon: 'fas fa-right-left', action: 'Open Tool' },
+        ]
+      },
+      'thermodynamics-science': {
+        name: '🔥 Thermodynamics',
+        icon: 'fas fa-fire',
+        calculators: [
+          { id: 'potential-energy', title: 'Heat Transfer Foundations', description: 'Work through energy state changes and thermal problem setup.', icon: 'fas fa-temperature-high', action: 'Open Tool' },
+          { id: 'work-calculator', title: 'Laws of Thermodynamics', description: 'Use work-energy relationships in closed-system calculations.', icon: 'fas fa-gears', action: 'Open Tool' },
+          { id: 'power-calculator', title: 'Heat Engines', description: 'Estimate output power and energy transfer rates.', icon: 'fas fa-industry', action: 'Open Tool' },
+          { id: 'efficiency-calculator', title: 'Refrigeration Cycles & Efficiency', description: 'Measure performance and efficiency in thermal systems.', icon: 'fas fa-snowflake', action: 'Open Tool' },
+        ]
+      },
+      'astronomy-science': {
+        name: '🌌 Astronomy',
+        icon: 'fas fa-meteor',
+        calculators: [
+          { id: 'orbital-velocity', title: 'Orbital Mechanics', description: 'Calculate orbital speed for satellites and space objects.', icon: 'fas fa-satellite', action: 'Open Tool' },
+          { id: 'keplers-law', title: 'Planetary Motion', description: 'Use orbital period and radius relationships for planetary systems.', icon: 'fas fa-globe-americas', action: 'Open Tool' },
+          { id: 'gravitational-force', title: 'Gravity in Space', description: 'Model gravitational attraction for astronomy and space science.', icon: 'fas fa-globe', action: 'Open Tool' },
+          { id: 'frequency-wavelength', title: 'Light Year & Stellar Physics Support', description: 'Use wave relationships common in light and stellar calculations.', icon: 'fas fa-star', action: 'Open Tool' },
+          { id: 'escape-velocity', title: 'Escape Velocity', description: 'Estimate launch speed required to escape a gravity well.', icon: 'fas fa-rocket', action: 'Open Tool' },
+        ]
+      },
+      'biology-science': {
+        name: '🧬 Biology',
+        icon: 'fas fa-dna',
+        calculators: [
+          { id: 'bmi-calculator', title: 'Human Body Calculations', description: 'Assess body metrics using standard anthropometric formulas.', icon: 'fas fa-person', action: 'Open Tool' },
+          { id: 'bmr-calculator', title: 'Metabolism (BMR/BMI)', description: 'Estimate basal metabolic rate and energy needs.', icon: 'fas fa-fire', action: 'Open Tool' },
+          { id: 'body-fat-calculator', title: 'Cell Biology & Body Composition Support', description: 'Estimate body composition for practical biology and health science use.', icon: 'fas fa-percent', action: 'Open Tool' },
+          { id: 'calorie-calculator', title: 'Nutrition Science', description: 'Estimate calorie requirements for nutrition-focused analysis.', icon: 'fas fa-apple-whole', action: 'Open Tool' },
+          { id: 'water-intake-calculator', title: 'Population & Physiology Support', description: 'Model hydration needs for everyday biological science use cases.', icon: 'fas fa-droplet', action: 'Open Tool' },
+        ]
+      },
+      'environmental-science': {
+        name: '🌿 Environmental Science',
+        icon: 'fas fa-leaf',
+        calculators: [
+          { id: 'water-bill-calculator', title: 'Water Consumption', description: 'Estimate household water usage and cost impact.', icon: 'fas fa-faucet-drip', action: 'Open Tool' },
+          { id: 'electricity-bill-calculator', title: 'Energy Usage', description: 'Measure electricity consumption and utility cost.', icon: 'fas fa-bolt', action: 'Open Tool' },
+        ]
+      },
+      'material-science': {
+        name: '🧱 Material Science',
+        icon: 'fas fa-cubes',
+        calculators: [
+          { id: 'density-calculator', title: 'Density', description: 'Calculate density, mass, and volume for material studies.', icon: 'fas fa-cube', action: 'Open Tool' },
+          { id: 'pressure-calculator', title: 'Stress & Strain Support', description: 'Use force-area relationships in basic material loading problems.', icon: 'fas fa-weight-hanging', action: 'Open Tool' },
+          { id: 'resistance-calculator', title: 'Thermal & Electrical Material Properties', description: 'Estimate resistive behavior relevant to material science applications.', icon: 'fas fa-microchip', action: 'Open Tool' },
+        ]
+      },
+      'fluid-mechanics-science': {
+        name: '🌊 Fluid Mechanics',
+        icon: 'fas fa-water',
+        calculators: [
+          { id: 'pressure-calculator', title: 'Fluid Pressure', description: 'Calculate pressure from force and area in fluid systems.', icon: 'fas fa-gauge', action: 'Open Tool' },
+          { id: 'density-calculator', title: 'Density & Buoyancy', description: 'Analyze density relationships used in buoyancy problems.', icon: 'fas fa-cube', action: 'Open Tool' },
+          { id: 'buoyancy-calculator', title: 'Archimedes Principle', description: 'Estimate buoyant force and displaced fluid effects.', icon: 'fas fa-ship', action: 'Open Tool' },
+        ]
+      },
+      'applied-science': {
+        name: '🛠️ Applied Science',
+        icon: 'fas fa-gears',
+        calculators: [
+          { id: 'force-calculator', title: 'Engineering Calculations', description: 'Apply core force relationships in engineering-style problems.', icon: 'fas fa-helmet-safety', action: 'Open Tool' },
+          { id: 'work-calculator', title: 'Industrial Calculations', description: 'Estimate work done in machine and process contexts.', icon: 'fas fa-industry', action: 'Open Tool' },
+          { id: 'power-calculator', title: 'Energy & Power Systems', description: 'Calculate output power for applied systems.', icon: 'fas fa-bolt', action: 'Open Tool' },
+          { id: 'efficiency-calculator', title: 'Machine Efficiency', description: 'Measure efficiency in practical science and engineering workflows.', icon: 'fas fa-gauge-high', action: 'Open Tool' },
         ]
       },
     }

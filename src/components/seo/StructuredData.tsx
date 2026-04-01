@@ -5,9 +5,11 @@ interface StructuredDataProps {
   categoryName: string
   pathname: string
   baseUrl?: string
+  featureList?: string[]
+  applicationCategory?: string
 }
 
-export function StructuredData({ title, description, categoryId, categoryName, pathname, baseUrl = 'https://calculatorloop.com' }: StructuredDataProps) {
+export function StructuredData({ title, description, categoryId, categoryName, pathname, baseUrl = 'https://calculatorloop.com', featureList, applicationCategory = 'UtilitiesApplication' }: StructuredDataProps) {
   const canonicalUrl = `${baseUrl}${pathname}`
 
   const supportedLocales = new Set([
@@ -38,16 +40,21 @@ export function StructuredData({ title, description, categoryId, categoryName, p
     "name": title,
     "description": description,
     "url": canonicalUrl,
-    "applicationCategory": "UtilitiesApplication",
+    "applicationCategory": applicationCategory,
+    "applicationSubCategory": categoryName,
     "operatingSystem": "Any",
     "isAccessibleForFree": true,
     "image": `${baseUrl}/icon-512.png`,
+    "author": {
+      "@type": "Organization",
+      "name": "Calculator Loop"
+    },
     "offers": {
       "@type": "Offer",
       "price": "0",
       "priceCurrency": "INR"
     },
-    "featureList": [
+    "featureList": featureList ?? [
       "Instant Calculation",
       "Mobile Friendly",
       "Free to Use",

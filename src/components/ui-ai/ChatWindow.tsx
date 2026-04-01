@@ -384,8 +384,8 @@ If you are in an in-app browser (WhatsApp/Instagram), use “Open in Chrome”.`
     setIsLoading(true);
 
     try {
-      // Send history for context (last 10 messages)
-      const historyToSend = [...messages, newMessage].slice(-10);
+      // Send history for context (last 20 messages for better memory)
+      const historyToSend = [...messages, newMessage].slice(-20);
 
       const response = await fetch('/api/ai/chat', {
         method: 'POST',

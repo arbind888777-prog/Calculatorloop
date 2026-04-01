@@ -103,6 +103,12 @@ export function proxy(request: NextRequest) {
 
   try {
 
+  // Never interfere with NextAuth's JSON endpoints.
+  // These routes must return raw auth responses, not locale rewrites or custom request headers.
+  if (pathname.startsWith('/api/auth')) {
+    return NextResponse.next()
+  }
+
   // Legacy URL redirects (SEO): handle old .html/.php calculator pages indexed by Google.
   // Supports locale-prefixed URLs too (e.g. /hi/financial-calculators/sip-calculator.html).
   if (!pathname.startsWith('/api')) {
@@ -228,6 +234,17 @@ export function proxy(request: NextRequest) {
         }
         redirectUrl.search = search
         return NextResponse.redirect(redirectUrl, 308)
+      }
+    }
+
+    // Fallback: /{category}/{calc} without locale prefix — rewrite to /calculator/{calc}
+    // This handles direct navigation to category-style URLs (e.g., from language switching).
+    if (baseParts.length === 2 && !pathLocale && (toolsData as any)[baseParts[0]]) {
+      const calcId = normalizeLegacyCalculatorId(baseParts[1])
+      if (calcId) {
+        const rewriteUrl = request.nextUrl.clone()
+        rewriteUrl.pathname = `/calculator/${calcId}`
+        return NextResponse.rewrite(rewriteUrl)
       }
     }
   }
