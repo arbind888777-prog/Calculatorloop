@@ -17,9 +17,12 @@ jobs:
           host: ${{ secrets.VPS_IP }}
           username: ${{ secrets.VPS_USERNAME }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: 22
           script: |
-            cd /var/www/Calculatorloop
+            cd /var/www/Calculatorloop || exit
             git pull origin main
+            export NVM_DIR="$HOME/.nvm"
+            [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
             npm install
             npm run build
             pm2 restart calculator-app || pm2 start npm --name "calculator-app" -- start
