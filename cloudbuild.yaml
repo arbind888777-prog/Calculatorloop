@@ -53,6 +53,8 @@ steps:
       - '300'
       - '--port'
       - '8080'
+      - '--set-env-vars'
+      - 'NODE_ENV=production,NEXTAUTH_URL=https://calculatorloop.com,NEXT_PUBLIC_SITE_URL=https://calculatorloop.com'
     timeout: '900s'
 
 images:
