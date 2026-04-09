@@ -34,6 +34,8 @@ export default function RegisterClient() {
     password: "",
   })
 
+  const passwordHint = "Use 8+ characters with uppercase, lowercase, number, and special character."
+
   useEffect(() => {
     let mounted = true
     getProviders()
@@ -53,20 +55,32 @@ export default function RegisterClient() {
     setIsLoading(true)
 
     try {
+      const payload = {
+        name: data.name.trim(),
+        email: data.email.trim().toLowerCase(),
+        password: data.password,
+      }
+
       const response = await fetch("/api/register", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify(data),
+        body: JSON.stringify(payload),
       })
 
       if (!response.ok) {
         const json = await response.json().catch(() => null)
-        const message =
-          (json && (json.error || json.message)) ||
-          (Array.isArray(json?.details) ? json.details.join('\n') : null) ||
-          "Something went wrong"
+        let message = "Something went wrong"
+        if (json) {
+          if (Array.isArray(json.details) && json.details.length > 0) {
+            message = json.details.map((d: string) => d.includes(': ') ? d.split(': ')[1] : d).join('\n')
+          } else if (json.error) {
+            message = json.error
+          } else if (json.message) {
+            message = json.message
+          }
+        }
         throw new Error(message)
       }
 
@@ -100,11 +114,15 @@ export default function RegisterClient() {
                   type="text"
                   autoComplete="name"
                   required
+                  minLength={2}
                   value={data.name}
                   onChange={(e) => setData({ ...data, name: e.target.value })}
                   disabled={isLoading}
                 />
               </div>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Letters, spaces, apostrophes, periods, and hyphens are allowed.
+              </p>
             </div>
 
             <div>
@@ -132,11 +150,17 @@ export default function RegisterClient() {
                   type="password"
                   autoComplete="new-password"
                   required
+                  minLength={8}
+                  pattern="(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]+"
+                  title={passwordHint}
                   value={data.password}
                   onChange={(e) => setData({ ...data, password: e.target.value })}
                   disabled={isLoading}
                 />
               </div>
+              <p className="mt-1 text-xs text-muted-foreground">
+                {passwordHint}
+              </p>
             </div>
 
             <div>

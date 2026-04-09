@@ -8,11 +8,16 @@ import { z } from 'zod';
 export const registrationSchema = z.object({
   name: z
     .string()
+    .trim()
     .min(2, 'Name must be at least 2 characters')
     .max(100, 'Name must be less than 100 characters')
-    .regex(/^[a-zA-Z\s]+$/, 'Name can only contain letters and spaces'),
+    .regex(
+      /^[\p{L}\p{M}][\p{L}\p{M}\s.'-]*$/u,
+      'Name can only contain letters, spaces, apostrophes, periods, and hyphens'
+    ),
   email: z
     .string()
+    .trim()
     .email('Invalid email address')
     .min(5, 'Email must be at least 5 characters')
     .max(255, 'Email must be less than 255 characters')
@@ -22,7 +27,7 @@ export const registrationSchema = z.object({
     .min(8, 'Password must be at least 8 characters')
     .max(128, 'Password must be less than 128 characters')
     .regex(
-      /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]/,
+      /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]+$/,
       'Password must contain at least one uppercase letter, one lowercase letter, one number, and one special character'
     ),
 });
