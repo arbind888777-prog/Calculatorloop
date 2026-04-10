@@ -4,7 +4,7 @@ import { useMemo, useState, useEffect } from "react"
 import { Calendar, Cake, Timer, Hourglass, CalendarDays, Heart, Wind, Eye, Bed, UtensilsCrossed, Droplet, Smile, Footprints, History, Music, Cpu, Star, Trophy, Target, RefreshCw } from "lucide-react"
 import { FinancialCalculatorTemplate, ResultCard } from "@/components/calculators/templates/FinancialCalculatorTemplate"
 import { AgeSeoContent } from "@/components/calculators/seo/MiscSeo"
-import { VoiceDateInput } from "@/components/ui/VoiceDateInput"
+
 import { VoiceTimeInput } from "@/components/ui/VoiceTimeInput"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -351,13 +351,65 @@ export function AdvancedAgeCalculator() {
             </Button>
           </div>
           <div className="space-y-2">
-            <Label className="text-sm font-medium uppercase tracking-wide text-muted-foreground">Date of Birth (Type or Select)</Label>
-            <VoiceDateInput
-              label=""
-              value={dob}
-              onChangeAction={setDob}
-              inputClassName="p-4 rounded-xl bg-secondary/20 border border-transparent hover:border-primary/30 focus:border-primary/50 focus:ring-4 focus:ring-primary/10 transition-all outline-none font-medium text-lg"
-            />
+            <Label className="text-sm font-medium uppercase tracking-wide text-muted-foreground">Date of Birth</Label>
+            <div className="flex gap-2">
+              <div className="flex-1 relative">
+                <select
+                  value={dob.split('-')[2] || "01"}
+                  onChange={(e) => {
+                    const parts = dob.split('-')
+                    if (parts.length === 3) setDob(`${parts[0]}-${parts[1]}-${e.target.value.padStart(2, '0')}`)
+                  }}
+                  className="w-full appearance-none p-3 lg:p-4 rounded-xl bg-secondary/20 border border-zinc-200 dark:border-zinc-800 hover:border-primary/30 focus:border-primary/50 focus:ring-4 focus:ring-primary/10 transition-all outline-none font-medium text-base lg:text-lg text-foreground cursor-pointer"
+                >
+                  <option value="" disabled>Day</option>
+                  {Array.from({ length: 31 }, (_, i) => i + 1).map(d => (
+                    <option key={d} value={d}>{d.toString().padStart(2, '0')}</option>
+                  ))}
+                </select>
+                <div className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-muted-foreground">
+                  <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" /></svg>
+                </div>
+              </div>
+
+              <div className="flex-1 relative">
+                <select
+                  value={dob.split('-')[1] || "01"}
+                  onChange={(e) => {
+                    const parts = dob.split('-')
+                    if (parts.length === 3) setDob(`${parts[0]}-${e.target.value.padStart(2, '0')}-${parts[2]}`)
+                  }}
+                  className="w-full appearance-none p-3 lg:p-4 rounded-xl bg-secondary/20 border border-zinc-200 dark:border-zinc-800 hover:border-primary/30 focus:border-primary/50 focus:ring-4 focus:ring-primary/10 transition-all outline-none font-medium text-base lg:text-lg text-foreground cursor-pointer"
+                >
+                  <option value="" disabled>Month</option>
+                  {Array.from({ length: 12 }, (_, i) => i + 1).map(m => (
+                    <option key={m} value={m}>{new Date(2000, m - 1).toLocaleString('default', { month: 'short' })}</option>
+                  ))}
+                </select>
+                <div className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-muted-foreground">
+                  <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" /></svg>
+                </div>
+              </div>
+
+              <div className="flex-[1.2] relative">
+                <select
+                  value={dob.split('-')[0] || "2000"}
+                  onChange={(e) => {
+                    const parts = dob.split('-')
+                    if (parts.length === 3) setDob(`${e.target.value}-${parts[1]}-${parts[2]}`)
+                  }}
+                  className="w-full appearance-none p-3 lg:p-4 rounded-xl bg-secondary/20 border border-zinc-200 dark:border-zinc-800 hover:border-primary/30 focus:border-primary/50 focus:ring-4 focus:ring-primary/10 transition-all outline-none font-medium text-base lg:text-lg text-foreground cursor-pointer"
+                >
+                  <option value="" disabled>Year</option>
+                  {Array.from({ length: 150 }, (_, i) => new Date().getFullYear() - i).map(y => (
+                    <option key={y} value={y}>{y}</option>
+                  ))}
+                </select>
+                <div className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-muted-foreground">
+                  <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" /></svg>
+                </div>
+              </div>
+            </div>
           </div>
 
           <div className="space-y-2">
