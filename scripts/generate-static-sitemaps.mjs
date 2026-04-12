@@ -2,7 +2,9 @@
 import fs from 'fs/promises'
 import path from 'path'
 import vm from 'vm'
+import { PrismaClient } from '@prisma/client'
 
+const prisma = new PrismaClient()
 const repoRoot = process.cwd()
 const toolsFile = path.join(repoRoot, 'src', 'lib', 'toolsData.ts')
 const financialJson = path.join(repoRoot, 'financial-tools-report.json')
@@ -86,6 +88,19 @@ async function main() {
       }
     }
 
+    // append blogs from db
+    try {
+      const dbPosts = await prisma.blogPost.findMany({
+        where: { status: 'PUBLISHED' },
+        select: { slug: true }
+      });
+      for (const p of dbPosts) {
+        urls.push(`${baseUrl}/${loc}/blog/${p.slug}`)
+      }
+    } catch (e) {
+      console.warn("DB not reachable in static sitemap script for blogs", e)
+    }
+
     // dedupe and chunk
     const unique = Array.from(new Set(urls))
     for (let i = 0; i < unique.length; i += MAX_PER_SITEMAP) {
@@ -107,6 +122,11 @@ async function main() {
   await fs.writeFile(path.join(repoRoot, 'public', 'robots.txt'), robots, 'utf8')
 
   console.log('Generated', sitemapFiles.length, 'sitemap files. Index written to /public/sitemap_index.xml')
+  await prisma.$disconnect()
 }
 
-main().catch((err) => { console.error(err); process.exit(1) })
+main().catch(async (err) => { 
+  console.error(err)
+  await prisma.$disconnect()
+  process.exit(1) 
+})

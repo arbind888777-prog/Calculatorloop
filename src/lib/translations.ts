@@ -1,6 +1,11 @@
 // Import JSON locale files
 import enTranslations from '@/locales/en.json';
 import hiTranslations from '@/locales/hi.json';
+import taTranslations from '@/locales/ta.json';
+import teTranslations from '@/locales/te.json';
+import bnTranslations from '@/locales/bn.json';
+import mrTranslations from '@/locales/mr.json';
+import guTranslations from '@/locales/gu.json';
 import esTranslations from '@/locales/es.json';
 import ptTranslations from '@/locales/pt.json';
 import frTranslations from '@/locales/fr.json';
@@ -14,6 +19,11 @@ import jaTranslations from '@/locales/ja.json';
 export const translations = {
   en: enTranslations,
   hi: hiTranslations,
+  ta: taTranslations,
+  te: teTranslations,
+  bn: bnTranslations,
+  mr: mrTranslations,
+  gu: guTranslations,
   es: esTranslations,
   pt: ptTranslations,
   fr: frTranslations,

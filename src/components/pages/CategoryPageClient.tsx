@@ -567,19 +567,19 @@ export function CategoryPageClient({ categoryId, categoryName, subcategoryList }
           className="inline-flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-primary transition-colors mb-6"
         >
           <Icons.ArrowLeft className="h-4 w-4" />
-          Back to Home
+          {t('common.backToHome') || 'Back to Home'}
         </Link>
 
         {/* Header with Gradient */}
         <div className="mb-12 text-center md:text-left">
           <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 border border-primary/20 mb-4">
             <Icons.Calculator className="h-4 w-4 text-primary" />
-            <span className="text-sm font-medium text-primary">Category</span>
+            <span className="text-sm font-medium text-primary">{t('nav.categories') || 'Category'}</span>
           </div>
           <h1 className="text-4xl md:text-6xl font-bold mb-4 bg-gradient-to-r from-primary via-purple-500 to-pink-500 bg-clip-text text-transparent">
             {categoryName}
           </h1>
-          <p className="text-lg text-muted-foreground">{allCalculatorsCount} calculators available</p>
+          <p className="text-lg text-muted-foreground">{allCalculatorsCount} {t('common.tools') || 'calculators available'}</p>
         </div>
 
         {/* Subcategory Sections */}
@@ -594,7 +594,7 @@ export function CategoryPageClient({ categoryId, categoryName, subcategoryList }
                   </span>
                 </h2>
                 <span className="px-3 py-1 rounded-full bg-primary/10 text-sm font-semibold text-primary">
-                  {sub.calculators.length} tools
+                  {sub.calculators.length} {t('common.tools') || 'tools'}
                 </span>
               </div>
 

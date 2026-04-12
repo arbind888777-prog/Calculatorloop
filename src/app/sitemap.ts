@@ -3,8 +3,9 @@ import { toolsData } from '@/lib/toolsData'
 import { allBlogPosts } from '@/lib/blogData'
 import { getAllMarkdownBlogPosts } from '@/lib/blogMarkdown'
 import { getSiteUrl } from '@/lib/siteUrl'
+import { prisma } from '@/lib/prisma'
 
-export default function sitemap(): MetadataRoute.Sitemap {
+export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const baseUrl = getSiteUrl()
   const currentDate = new Date()
 
@@ -87,8 +88,30 @@ export default function sitemap(): MetadataRoute.Sitemap {
     }))
   })
 
+  // Fetch db posts securely handling potential timeouts
+  let dbBlogPages: MetadataRoute.Sitemap = []
+  try {
+    const dbPosts = await prisma.blogPost.findMany({
+      where: { status: 'PUBLISHED' },
+      select: { slug: true, updatedAt: true }
+    });
+    
+    dbBlogPages = dbPosts.flatMap((post) => {
+      const lastModified = new Date(post.updatedAt)
+      const priority = 0.5
+      return withLocales(`/blog/${post.slug}`).map((url) => ({
+        url,
+        lastModified,
+        changeFrequency: 'monthly' as const,
+        priority,
+      }))
+    })
+  } catch (error) {
+    console.warn("DB not ready during static sitemap generation, skipping db posts.")
+  }
+
   // De-dupe (defensive)
-  const all = [...staticLocalizedPages, ...categoryPages, ...calculatorPages, ...blogPages, ...markdownBlogPages]
+  const all = [...staticLocalizedPages, ...categoryPages, ...calculatorPages, ...blogPages, ...markdownBlogPages, ...dbBlogPages]
   const seen = new Set<string>()
   return all.filter((item) => {
     if (seen.has(item.url)) return false
