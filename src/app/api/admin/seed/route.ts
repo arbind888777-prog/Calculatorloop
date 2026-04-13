@@ -5,11 +5,29 @@ import { hashPassword } from "@/lib/password"
 /**
  * POST /api/admin/seed
  * Creates the first SUPER_ADMIN user. Only works if no admin user exists yet.
+ * Disabled in production unless SEED_SECRET env is set and passed as Authorization header.
  *
  * Body: { email: string, password: string, name?: string }
  */
 export async function POST(request: Request) {
   try {
+    // Block in production unless SEED_SECRET is configured
+    if (process.env.NODE_ENV === "production") {
+      const seedSecret = process.env.SEED_SECRET
+      if (!seedSecret) {
+        return NextResponse.json(
+          { error: "Seed endpoint is disabled in production." },
+          { status: 403 }
+        )
+      }
+      const authHeader = request.headers.get("Authorization")
+      if (authHeader !== `Bearer ${seedSecret}`) {
+        return NextResponse.json(
+          { error: "Invalid seed secret." },
+          { status: 401 }
+        )
+      }
+    }
     // Check if any admin already exists
     const existingAdmin = await prisma.user.findFirst({
       where: {

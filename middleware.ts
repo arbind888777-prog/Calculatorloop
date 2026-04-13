@@ -29,7 +29,7 @@ export default async function middleware(request: NextRequest) {
     }
   }
 
-  // Protect /api/admin routes
+  // Protect /api/admin routes (seed is handled by its own route guard)
   if (pathname.startsWith('/api/admin') && !pathname.startsWith('/api/admin/seed')) {
     const token = await getToken({
       req: request,
