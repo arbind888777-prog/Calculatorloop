@@ -17,6 +17,7 @@ export const RATE_LIMIT_CONFIG = {
   contact: { requests: 5, window: 3600 }, // 5 requests per hour
   register: { requests: 3, window: 3600 }, // 3 requests per hour
   login: { requests: 10, window: 900 }, // 10 requests per 15 minutes
+  adminLogin: { requests: 5, window: 900 }, // 5 attempts per 15 minutes for admin
   newsletter: { requests: 2, window: 3600 }, // 2 requests per hour
   apiKeyCreate: { requests: 5, window: 3600 }, // 5 API keys per hour
   passwordReset: { requests: 3, window: 3600 }, // 3 password resets per hour

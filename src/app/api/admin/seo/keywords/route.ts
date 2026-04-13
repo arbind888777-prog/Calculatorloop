@@ -1,8 +1,12 @@
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
+import { requireAdmin } from "@/lib/adminGuard"
 
 export async function GET() {
   try {
+    const guard = await requireAdmin("viewer")
+    if (!guard.ok) return guard.response
+
     const keywords = await prisma.sEOKeyword.findMany({
       orderBy: { createdAt: "desc" }
     })
@@ -15,6 +19,9 @@ export async function GET() {
 
 export async function POST(req: NextRequest) {
   try {
+    const guard = await requireAdmin("editor")
+    if (!guard.ok) return guard.response
+
     const body = await req.json()
     const { keyword, targetUrl, volume, currentRank } = body
 

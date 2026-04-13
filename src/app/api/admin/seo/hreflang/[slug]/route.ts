@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
+import { requireAdmin } from "@/lib/adminGuard"
 
 interface Params { params: Promise<{ slug: string }> }
 
@@ -11,6 +12,9 @@ const SITE_URL = "https://calculatorloop.com"
  */
 export async function GET(_request: NextRequest, { params }: Params) {
   try {
+    const guard = await requireAdmin("viewer")
+    if (!guard.ok) return guard.response
+
     const { slug } = await params
 
     // Check if it's a blog post

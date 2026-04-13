@@ -1,10 +1,14 @@
 import { NextResponse } from "next/server"
+import { requireAdmin } from "@/lib/adminGuard"
 
 /**
  * POST /api/admin/seo/generate-sitemap — Trigger sitemap regeneration
  */
 export async function POST() {
   try {
+    const guard = await requireAdmin("editor")
+    if (!guard.ok) return guard.response
+
     // In Next.js App Router, the sitemap is auto-generated from /app/sitemap.ts
     // This endpoint triggers a revalidation of the sitemap path
     const baseUrl = process.env.NEXTAUTH_URL || process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000"

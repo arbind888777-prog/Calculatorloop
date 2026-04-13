@@ -1,9 +1,13 @@
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
+import { requireAdmin } from "@/lib/adminGuard"
 
 // GET all English calculator translations for bulk editing
 export async function GET(req: NextRequest) {
   try {
+    const guard = await requireAdmin("viewer")
+    if (!guard.ok) return guard.response
+
     const url = new URL(req.url)
     const lang = url.searchParams.get("lang") || "en"
 
@@ -27,6 +31,9 @@ export async function GET(req: NextRequest) {
 // Bulk update metaTitle and metaDesc for translations
 export async function PUT(req: NextRequest) {
   try {
+    const guard = await requireAdmin("editor")
+    if (!guard.ok) return guard.response
+
     const body = await req.json()
     const { updates } = body // Array of { id, metaTitle, metaDesc }
 

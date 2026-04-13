@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { v2 as cloudinary } from "cloudinary"
+import { requireAdmin } from "@/lib/adminGuard"
 
 cloudinary.config({
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
@@ -12,6 +13,9 @@ cloudinary.config({
  */
 export async function POST(request: NextRequest) {
   try {
+    const guard = await requireAdmin("editor")
+    if (!guard.ok) return guard.response
+
     const formData = await request.formData()
     const file = formData.get("file") as File | null
 

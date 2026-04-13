@@ -6,6 +6,7 @@ import { prisma } from "@/lib/prisma"
 import bcrypt from "bcryptjs"
 import { sanitizeEmail } from "@/lib/security/sanitize"
 import { normalizeSiteUrl } from "@/lib/siteUrl"
+import { checkRateLimit } from "@/lib/security/rateLimit"
 
 const hasGoogleOAuth =
   !!process.env.GOOGLE_CLIENT_ID && !!process.env.GOOGLE_CLIENT_SECRET
@@ -82,6 +83,12 @@ export const authOptions: NextAuthOptions = {
         }
 
         const email = sanitizeEmail(credentials.email)
+
+        // Rate-limit login attempts per email to prevent brute-force
+        const rateCheck = checkRateLimit(email, "adminLogin")
+        if (!rateCheck.allowed) {
+          throw new Error(`Too many login attempts. Try again in ${rateCheck.retryAfter} seconds.`)
+        }
 
         const user = await prisma.user.findUnique({
           where: {

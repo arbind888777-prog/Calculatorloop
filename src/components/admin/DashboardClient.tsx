@@ -96,6 +96,33 @@ function timeAgo(dateStr: string): string {
   return `${days}d ago`
 }
 
+function getActionDotColor(action: string): string {
+  if (action.includes("delet")) return "#ef4444"   // red — destructive
+  if (action.includes("creat") || action.includes("publish")) return "#22c55e" // green — create
+  if (action.includes("updat") || action.includes("edit")) return "#3b82f6"   // blue — update
+  return "#eab308" // yellow — other
+}
+
+function getEntityBadgeStyle(entityType: string | null): React.CSSProperties {
+  const map: Record<string, string> = {
+    BlogPost: "#a855f7",
+    Calculator: "#3b82f6",
+    User: "#f97316",
+    ApiKey: "#22c55e",
+  }
+  return {
+    fontSize: "9px",
+    fontWeight: 600,
+    padding: "1px 5px",
+    borderRadius: "4px",
+    background: `${map[entityType ?? ""] ?? "#5a7090"}22`,
+    color: map[entityType ?? ""] ?? "#5a7090",
+    border: `1px solid ${map[entityType ?? ""] ?? "#5a7090"}44`,
+    textTransform: "uppercase" as const,
+    letterSpacing: "0.4px",
+  }
+}
+
 export function DashboardClient({ data }: { data: DashboardData }) {
   return (
     <div>
@@ -272,6 +299,7 @@ export function DashboardClient({ data }: { data: DashboardData }) {
               No recent activity yet.
             </p>
           ) : (
+            <>
             <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
               {data.recentActivity.map((activity) => (
                 <div
@@ -289,7 +317,7 @@ export function DashboardClient({ data }: { data: DashboardData }) {
                       width: "6px",
                       height: "6px",
                       borderRadius: "50%",
-                      background: "#3b82f6",
+                      background: getActionDotColor(activity.action),
                       marginTop: "6px",
                       flexShrink: 0,
                     }}
@@ -299,13 +327,24 @@ export function DashboardClient({ data }: { data: DashboardData }) {
                       <strong>{activity.userName}</strong>{" "}
                       {formatActionLabel(activity.action)}
                     </p>
-                    <p style={{ margin: "2px 0 0 0", fontSize: "10px", color: "#5a7090" }}>
-                      {timeAgo(activity.createdAt)}
-                    </p>
+                    <div style={{ display: "flex", alignItems: "center", gap: "6px", marginTop: "3px" }}>
+                      <span style={{ fontSize: "10px", color: "#5a7090" }}>
+                        {timeAgo(activity.createdAt)}
+                      </span>
+                      {activity.entityType && (
+                        <span style={getEntityBadgeStyle(activity.entityType)}>
+                          {activity.entityType}
+                        </span>
+                      )}
+                    </div>
                   </div>
                 </div>
               ))}
             </div>
+            <Link href="/admin/analytics" style={{ textDecoration: "none", display: "block", marginTop: "12px" }}>
+              <span style={{ fontSize: "11px", color: "#3b82f6", fontWeight: 500 }}>View all activity →</span>
+            </Link>
+            </>
           )}
         </AdminCard>
 
