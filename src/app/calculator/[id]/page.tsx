@@ -12,6 +12,7 @@ import { getSiteUrl } from '@/lib/siteUrl'
 import { FAQSection } from '@/components/calculators/ui/FAQSection'
 import { CalculatorSchema, FAQSchema, HowToSchema } from '@/components/seo/AdvancedSchema'
 import { getCalculatorSeoProfile } from '@/lib/calculatorSeo'
+import { prisma } from '@/lib/prisma'
 
 function normalizeCalculatorId(raw: string): string {
   const decoded = (() => {
@@ -59,12 +60,20 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
     }
   }
 
-  const meta = localizeToolMeta({
+  // Fetch db translation override if available
+  const dbTranslation = await prisma.calculatorTranslation.findFirst({
+    where: { calculatorId: id, language }
+  });
+
+  const staticMeta = localizeToolMeta({
     dict,
     toolId: id,
     fallbackTitle: info.tool.title,
     fallbackDescription: info.tool.description,
   })
+
+  const metaTitle = dbTranslation?.metaTitle || staticMeta.title;
+  const metaDescription = dbTranslation?.metaDesc || staticMeta.description;
 
   const prefix = language !== 'en' ? `/${language}` : ''
   const pathname = `${prefix}/calculator/${id}`
@@ -72,14 +81,14 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
   const canonical = `${baseUrl}${pathname}`
   const seoProfile = getCalculatorSeoProfile({
     id,
-    title: meta.title,
-    description: meta.description,
+    title: metaTitle,
+    description: metaDescription ?? '',
     categoryId: info.categoryId,
     categoryName: info.categoryName,
   })
 
   return {
-    title: `${meta.title} - Free Online Calculator | Calculator Loop`,
+    title: `${metaTitle} - Free Online Calculator | Calculator Loop`,
     description: seoProfile.summary,
     keywords: seoProfile.keywords,
     authors: [{ name: 'Calculator Loop Team' }],
@@ -103,16 +112,16 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
       canonical,
     },
     openGraph: {
-      title: `${meta.title} - Free Online Calculator`,
+      title: `${metaTitle} - Free Online Calculator`,
       description: seoProfile.summary,
       type: 'website',
       url: canonical,
       siteName: 'Calculator Loop',
-      images: [{ url: '/opengraph-image', width: 1200, height: 630, alt: meta.title }],
+      images: [{ url: '/opengraph-image', width: 1200, height: 630, alt: metaTitle }],
     },
     twitter: {
       card: 'summary_large_image',
-      title: `${meta.title} - Free Online Calculator`,
+      title: `${metaTitle} - Free Online Calculator`,
       description: seoProfile.summary,
       images: ['/twitter-image'],
     }
@@ -141,7 +150,12 @@ export default async function CalculatorPage({ params }: { params: Promise<{ id:
     const baseUrl = getSiteUrl()
     const pathname = `${prefix}/calculator/${id}`
 
-    const meta = categoryInfo
+    // Fetch db translation override if available
+    const dbTranslation = await prisma.calculatorTranslation.findFirst({
+      where: { calculatorId: id, language }
+    });
+
+    const staticMeta = categoryInfo
       ? localizeToolMeta({
           dict,
           toolId: id,
@@ -150,11 +164,16 @@ export default async function CalculatorPage({ params }: { params: Promise<{ id:
         })
       : null
 
+    const meta = staticMeta ? {
+      title: dbTranslation?.title || staticMeta.title,
+      description: dbTranslation?.metaDesc || staticMeta.description
+    } : null;
+
     const seoProfile = categoryInfo && meta
       ? getCalculatorSeoProfile({
           id,
           title: meta.title,
-          description: meta.description,
+          description: meta.description ?? '',
           categoryId: categoryInfo.categoryId,
           categoryName: categoryInfo.categoryName,
         })
@@ -186,7 +205,7 @@ export default async function CalculatorPage({ params }: { params: Promise<{ id:
           category={categoryInfo.categoryName}
         />
         <FAQSchema faqs={seoProfile.faqs} />
-        <HowToSchema name={`How to use ${meta.title}`} description={meta.description} steps={seoProfile.howToSteps} />
+        <HowToSchema name={`How to use ${meta.title}`} description={meta.description ?? ''} steps={seoProfile.howToSteps} />
         
         <div className="container mx-auto px-4 pt-6">
           <div className="mb-6">
@@ -196,7 +215,7 @@ export default async function CalculatorPage({ params }: { params: Promise<{ id:
           <CalculatorComponent 
             id={id} 
             title={meta.title}
-            description={meta.description}
+            description={meta.description ?? ''}
           />
 
           <section className="mt-10 rounded-2xl border bg-card p-6 text-card-foreground shadow-sm">

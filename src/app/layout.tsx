@@ -6,6 +6,7 @@ import { CloudSyncBootstrap } from '@/components/providers/CloudSyncBootstrap'
 import { SettingsProvider } from '@/components/providers/SettingsProvider'
 import { Navbar } from '@/components/layout/Navbar'
 import { Footer } from '@/components/layout/Footer'
+import { ChatWidget } from '@/components/chat/ChatWidget'
 import { DeferredClientBits } from '@/components/layout/DeferredClientBits'
 import { OrganizationSchema, WebsiteSchema } from '@/components/seo/AdvancedSchema'
 import { ServiceWorkerRegistration } from '@/lib/serviceWorker'
@@ -232,6 +233,7 @@ export default async function RootLayout({
                   <Navbar />
                   <main className="flex-1 pt-20">{children}</main>
                   <Footer />
+                  <ChatWidget />
                   <DeferredClientBits />
                 </div>
               </AnalyticsProvider>

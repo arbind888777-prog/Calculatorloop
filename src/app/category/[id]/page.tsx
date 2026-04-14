@@ -9,7 +9,7 @@ import { FAQSection } from '@/components/calculators/ui/FAQSection'
 import { BreadcrumbSchema, FAQSchema, HowToSchema } from '@/components/seo/AdvancedSchema'
 import { getCategorySeoProfile } from '@/lib/categorySeo'
 import { getMergedTranslations } from '@/lib/translations'
-import { getDictString } from '@/lib/toolLocalization'
+import { getDictString, localizeSubcategoryName } from '@/lib/toolLocalization'
 
 export const dynamic = 'force-static'
 export const revalidate = 3600
@@ -141,7 +141,7 @@ export default async function CategoryPage({ params }: { params: Promise<{ id: s
   const subcategoryList = categoryData?.subcategories
     ? Object.entries(categoryData.subcategories).map(([key, sub]) => ({
         key,
-        name: sub.name,
+        name: localizeSubcategoryName(dict, key, sub.name),
         calculators: sub.calculators.filter((calc) => implementedCalculatorIds.has(calc.id)),
       }))
     : []

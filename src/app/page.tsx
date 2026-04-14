@@ -21,7 +21,7 @@ import { toolsData } from '@/lib/toolsData'
 import { implementedCalculatorIds } from '@/lib/calculatorRegistry'
 import { useSettings } from '@/components/providers/SettingsProvider'
 import { useTranslation } from '@/hooks/useTranslation'
-import { localizeToolMeta } from '@/lib/toolLocalization'
+import { localizeToolMeta, localizeSubcategoryName } from '@/lib/toolLocalization'
 
 type DashboardTool = {
   id: string
@@ -436,7 +436,7 @@ export default function HomePage() {
             description: String(tool.description),
           }))
 
-        return { key: String(key), name: String(sub.name), calculators }
+        return { key: String(key), name: localizeSubcategoryName(dict, String(key), String(sub.name)), calculators }
       })
       .filter((s) => s.calculators.length > 0)
 
@@ -782,7 +782,7 @@ export default function HomePage() {
                       </div>
 
                       <div className="pt-2 text-center text-xs text-muted-foreground">
-                        Select a subcategory from the left to see all tools.
+                        {tr('common.selectSubcategory', 'Select a subcategory from the left to see all tools.')}
                       </div>
                     </div>
                   )}

@@ -6,6 +6,7 @@ import { prisma } from "@/lib/prisma"
 import bcrypt from "bcryptjs"
 import { sanitizeEmail } from "@/lib/security/sanitize"
 import { normalizeSiteUrl } from "@/lib/siteUrl"
+import { checkRateLimit } from "@/lib/security/rateLimit"
 
 const hasGoogleOAuth =
   !!process.env.GOOGLE_CLIENT_ID && !!process.env.GOOGLE_CLIENT_SECRET
@@ -83,6 +84,12 @@ export const authOptions: NextAuthOptions = {
 
         const email = sanitizeEmail(credentials.email)
 
+        // Rate-limit login attempts per email to prevent brute-force
+        const rateCheck = checkRateLimit(email, "adminLogin")
+        if (!rateCheck.allowed) {
+          throw new Error(`Too many login attempts. Try again in ${rateCheck.retryAfter} seconds.`)
+        }
+
         const user = await prisma.user.findUnique({
           where: {
             email,
@@ -112,27 +119,64 @@ export const authOptions: NextAuthOptions = {
     }),
   ],
   callbacks: {
+    // NOTE: Role handling is defined in the later callbacks (session & jwt). The duplicate definitions have been removed.
     redirect: ({ url, baseUrl }) => {
       return normalizeAuthRedirectUrl(url, baseUrl)
     },
     session: ({ session, token }) => {
+      // Merge id and role into session.user
       return {
         ...session,
         user: {
           ...session.user,
           id: token.id,
+          role: token.role,
         },
       }
     },
-    jwt: ({ token, user }) => {
+    jwt: async ({ token, user }) => {
       if (user) {
-        const u = user as unknown as any
-        return {
-          ...token,
-          id: u.id,
-        }
+        token.id = user.id
+        // Fetch the role from the database for accurate role assignment
+        const dbUser = await prisma.user.findUnique({
+          where: { id: user.id },
+          select: { role: true },
+        })
+        token.role = dbUser?.role || "USER"
       }
       return token
     },
   },
+}
+
+// ============================================================
+// Admin auth helper utilities
+// ============================================================
+
+/**
+ * Check if a user role has admin access (SUPER_ADMIN or EDITOR).
+ */
+export function isAdminRole(role?: string | null): boolean {
+  return role === "SUPER_ADMIN" || role === "EDITOR"
+}
+
+/**
+ * Check if a user role is specifically SUPER_ADMIN.
+ */
+export function isSuperAdmin(role?: string | null): boolean {
+  return role === "SUPER_ADMIN"
+}
+
+/**
+ * Check if a user role is EDITOR.
+ */
+export function isEditor(role?: string | null): boolean {
+  return role === "EDITOR"
+}
+
+/**
+ * Check if a user role has at least viewer access.
+ */
+export function hasAdminAccess(role?: string | null): boolean {
+  return role === "SUPER_ADMIN" || role === "EDITOR" || role === "VIEWER"
 }

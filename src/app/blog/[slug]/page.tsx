@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { allBlogPosts, calculateReadingTime, formatDate, getRelatedPosts } from '@/lib/blogData';
 import { getAllMarkdownBlogSlugs, getMarkdownBlogPostBySlug } from '@/lib/blogMarkdown';
+import { prisma } from '@/lib/prisma';
 import {
   Calendar,
   Clock,
@@ -38,6 +39,46 @@ export async function generateMetadata({ params }: BlogPostPageProps): Promise<M
   const { slug } = await params;
   const language = (await headers()).get('x-calculator-language') || 'en'
   const prefix = language === 'en' ? '' : `/${language}`
+
+  // 1. Check PostgreSQL Database first
+  const dbPost = await prisma.blogPost.findUnique({
+    where: { slug },
+    include: { translations: true, author: true },
+  });
+
+  if (dbPost) {
+    const translation = dbPost.translations.find((t) => t.language === language);
+    const title = translation?.title || dbPost.slug;
+    const description = translation?.metaDesc || 'Calculator Loop Blog Post';
+    const keywords = dbPost.tags || [];
+    const authorName = dbPost.author?.name || 'Calculator Loop';
+
+    return {
+      title: `${title} - Calculator Loop Blog`,
+      description,
+      keywords,
+      authors: [{ name: authorName }],
+      openGraph: {
+        title,
+        description,
+        type: 'article',
+        url: `https://calculatorloop.com${prefix}/blog/${dbPost.slug}`,
+        publishedTime: dbPost.createdAt.toISOString(),
+        modifiedTime: dbPost.updatedAt.toISOString(),
+        authors: [authorName],
+        tags: keywords,
+        images: dbPost.featuredImage ? [{ url: dbPost.featuredImage }] : undefined,
+      },
+      twitter: {
+        card: 'summary_large_image',
+        title,
+        description,
+        images: dbPost.featuredImage ? [dbPost.featuredImage] : undefined,
+      },
+    };
+  }
+
+  // 2. Fallback to hardcoded array
   const post = allBlogPosts.find((p) => p.slug === slug);
   if (post) {
     return {
@@ -64,6 +105,7 @@ export async function generateMetadata({ params }: BlogPostPageProps): Promise<M
     };
   }
 
+  // 3. Fallback to older MD files
   const md = getMarkdownBlogPostBySlug(slug);
   if (md) {
     const title = md.frontmatter.title ?? md.slug;
@@ -96,45 +138,84 @@ export async function generateMetadata({ params }: BlogPostPageProps): Promise<M
 }
 
 export default async function BlogPostPage({ params }: BlogPostPageProps) {
+  const { slug } = await params;
   const language = (await headers()).get('x-calculator-language') || 'en'
   const dict = getMergedTranslations(language)
   const prefix = language === 'en' ? '' : `/${language}`
   const withLocale = (path: string) => `${prefix}${path}`
 
-  const { slug } = await params;
-  const post = allBlogPosts.find((p) => p.slug === slug);
-  const md = post ? null : getMarkdownBlogPostBySlug(slug);
+  // 1. Check PostgreSQL Database first
+  const dbPost = await prisma.blogPost.findUnique({
+    where: { slug },
+    include: { translations: true, author: true },
+  });
 
-  if (!post && !md) notFound();
+  // 2. Fallbacks
+  const post = dbPost ? null : allBlogPosts.find((p) => p.slug === slug);
+  const md = (dbPost || post) ? null : getMarkdownBlogPostBySlug(slug);
 
-  const normalizedPost = post
-    ? post
-    : {
-        slug: md!.slug,
-        title: md!.frontmatter.title ?? md!.slug,
-        description: md!.frontmatter.description ?? '',
-        content: md!.content,
-        category: (md!.frontmatter.category as any) ?? 'general',
-        tags: md!.frontmatter.tags ?? [],
-        author: {
-          name: md!.frontmatter.author ?? 'Calculator Loop',
-          avatar: '/favicon.ico',
-          bio: 'Calculator Loop Editorial',
-        },
-        publishedAt: md!.frontmatter.publishedAt ?? new Date().toISOString(),
-        updatedAt: md!.frontmatter.updatedAt,
-        readingTime: calculateReadingTime(md!.content),
-        image: md!.frontmatter.image,
-        featured: false,
-      };
+  if (!dbPost && !post && !md) notFound();
 
-  const relatedPosts = post ? getRelatedPosts(post.slug, post.category) : [];
+  let normalizedPost;
+
+  if (dbPost) {
+    const translation = dbPost.translations.find((t) => t.language === language);
+    const content = translation?.content || 'HTML Content Missing';
+    const title = translation?.title || dbPost.slug;
+    const description = translation?.metaDesc || '';
+
+    normalizedPost = {
+      slug: dbPost.slug,
+      title,
+      description,
+      content,
+      category: dbPost.category || 'general',
+      tags: dbPost.tags || [],
+      author: {
+        name: dbPost.author?.name || 'Calculator Loop',
+        avatar: '/favicon.ico',
+        bio: 'Calculator Loop Editorial',
+      },
+      publishedAt: dbPost.createdAt.toISOString(),
+      updatedAt: dbPost.updatedAt.toISOString(),
+      readingTime: calculateReadingTime(content),
+      image: dbPost.featuredImage,
+      featured: false,
+      isHtml: true, // DB content from Tiptap is inherently HTML
+    };
+  } else if (post) {
+    normalizedPost = { ...post, isHtml: false };
+  } else {
+    normalizedPost = {
+      slug: md!.slug,
+      title: md!.frontmatter.title ?? md!.slug,
+      description: md!.frontmatter.description ?? '',
+      content: md!.content,
+      category: (md!.frontmatter.category as any) ?? 'general',
+      tags: md!.frontmatter.tags ?? [],
+      author: {
+        name: md!.frontmatter.author ?? 'Calculator Loop',
+        avatar: '/favicon.ico',
+        bio: 'Calculator Loop Editorial',
+      },
+      publishedAt: md!.frontmatter.publishedAt ?? new Date().toISOString(),
+      updatedAt: md!.frontmatter.updatedAt,
+      readingTime: calculateReadingTime(md!.content),
+      image: md!.frontmatter.image,
+      featured: false,
+      isHtml: false,
+    };
+  }
+
+  const relatedPosts = (post || md) ? getRelatedPosts(normalizedPost.slug, normalizedPost.category) : [];
   const shareUrl = `https://calculatorloop.com${withLocale(`/blog/${normalizedPost.slug}`)}`;
 
-  const rawHtml = normalizedPost.content.replace(/\n/g, '<br />')
+  // Tiptap outputs native HTML, avoid replacing \n globally with <br/> for DB entries 
+  const rawHtml = normalizedPost.isHtml ? normalizedPost.content : normalizedPost.content.replace(/\n/g, '<br />');
+  
   const localizedHtml = prefix
     ? rawHtml.replace(/(href|src)="\/(?!\/)/g, `$1="${prefix}/`)
-    : rawHtml
+    : rawHtml;
 
   return (
     <main className="min-h-screen bg-background">

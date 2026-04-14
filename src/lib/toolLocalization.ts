@@ -55,7 +55,7 @@ const OVERRIDES: Record<string, { titleKey: string; descKey?: string }> = {
   'old-vs-new-regime': { titleKey: 'tax.old_vs_new_title', descKey: 'tax.old_vs_new_desc' },
 }
 
-const NAMESPACES = ['loan', 'tax', 'investment', 'health', 'real_estate', 'datetime', 'math', 'business', 'education', 'technology', 'scientific', 'physics']
+const NAMESPACES = ['loan', 'tax', 'investment', 'health', 'real_estate', 'datetime', 'math', 'business', 'education', 'technology', 'scientific', 'physics', 'insurance', 'credit_card', 'banking', 'tools']
 
 export function localizeToolMeta(args: {
   dict: AnyDict
@@ -108,4 +108,14 @@ export function getDictString(dict: AnyDict, key: string, fallback?: string): st
   const value = getByPath(dict, key)
   if (typeof value === 'string' && value.trim().length > 0) return value
   return fallback ?? key
+}
+
+/**
+ * Localize a subcategory name using the `subcategories` namespace.
+ * Falls back to the original English name.
+ */
+export function localizeSubcategoryName(dict: AnyDict, subcategoryKey: string, fallbackName: string): string {
+  const snake = toSnakeCase(subcategoryKey)
+  const value = firstString(dict, [`subcategories.${snake}`])
+  return value ?? fallbackName
 }

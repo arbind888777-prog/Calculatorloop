@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import { Calculator, TrendingUp, DollarSign, Calendar, BarChart3, PieChart } from 'lucide-react';
+import { useCalculatorI18n } from '@/hooks/useCalculatorI18n';
 
 /**
  * Advanced ROI Calculator
@@ -31,6 +32,7 @@ interface ROIResult {
 }
 
 export function AdvancedROICalculator() {
+  const { common, business, units, currency, formatCurrency, formatPct, dir } = useCalculatorI18n();
   const [method, setMethod] = useState<'simple' | 'npv' | 'cashflow'>('simple');
   
   // Simple ROI
@@ -65,11 +67,11 @@ export function AdvancedROICalculator() {
       netProfit,
       totalCashFlow: final,
       steps: [
-        `Initial Investment: $${initial.toFixed(2)}`,
-        `Final Value: $${final.toFixed(2)}`,
-        `Net Profit: $${netProfit.toFixed(2)}`,
-        `Simple ROI: ${roi.toFixed(2)}%`,
-        `Annualized ROI: ${annualizedROI.toFixed(2)}% (over ${years} years)`,
+        `${business.initialInvestment}: ${formatCurrency(initial)}`,
+        `${business.finalValue}: ${formatCurrency(final)}`,
+        `${business.netProfit}: ${formatCurrency(netProfit)}`,
+        `${business.simpleRoi}: ${formatPct(roi)}`,
+        `${business.annualizedRoi}: ${formatPct(annualizedROI)} (${units.perYear.replace('per ', '')} ${years} ${units.years})`,
       ]
     };
   };
@@ -146,13 +148,13 @@ export function AdvancedROICalculator() {
       netProfit,
       totalCashFlow: final,
       steps: [
-        `Initial Investment: $${initial.toFixed(2)} (Period 0)`,
-        `Return: $${final.toFixed(2)} (Period ${years})`,
-        `Discount Rate: ${rate}%`,
-        `PV of Returns: $${(final / Math.pow(1 + rate / 100, years)).toFixed(2)}`,
-        `NPV = PV of Returns - Initial Investment`,
-        `NPV = $${npv.toFixed(2)}`,
-        npv > 0 ? '✅ Positive NPV - Investment is worthwhile' : '❌ Negative NPV - Investment may not be worthwhile'
+        `${business.initialInvestment}: ${formatCurrency(initial)} (Period 0)`,
+        `${business.finalValue}: ${formatCurrency(final)} (Period ${years})`,
+        `${business.discountRate}: ${rate}%`,
+        `${business.pvOfReturns}: ${formatCurrency(final / Math.pow(1 + rate / 100, years))}`,
+        `NPV = ${business.pvOfReturns} - ${business.initialInvestment}`,
+        `NPV = ${formatCurrency(npv)}`,
+        npv > 0 ? `✅ ${business.npvPositive}` : `❌ ${business.npvNegative}`
       ]
     };
   };
@@ -179,13 +181,13 @@ export function AdvancedROICalculator() {
     const roi = initialInv > 0 ? (netProfit / initialInv) * 100 : 0;
 
     const steps = [
-      `Cash Flows Analysis:`,
-      ...cashFlows.map(cf => `  Period ${cf.period}: $${cf.amount.toFixed(2)}`),
+      `${business.cashFlowsAnalysis}:`,
+      ...cashFlows.map(cf => `  ${common.period} ${cf.period}: ${formatCurrency(cf.amount)}`),
       ``,
-      `NPV @ ${rate}%: $${npv.toFixed(2)}`,
-      `IRR: ${irr.toFixed(2)}%`,
-      paybackPeriod > 0 ? `Payback Period: ${paybackPeriod.toFixed(2)} periods` : 'Investment not recovered',
-      `Simple ROI: ${roi.toFixed(2)}%`,
+      `NPV @ ${rate}%: ${formatCurrency(npv)}`,
+      `IRR: ${formatPct(irr)}`,
+      paybackPeriod > 0 ? `${business.paybackPeriod}: ${paybackPeriod.toFixed(2)} periods` : business.investmentNotRecovered,
+      `${business.simpleRoi}: ${formatPct(roi)}`,
     ];
 
     return {
@@ -229,17 +231,17 @@ export function AdvancedROICalculator() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6" dir={dir}>
       {/* Method Selector */}
       <div className="bg-gradient-to-r from-purple-50 to-pink-50 p-4 rounded-lg border border-purple-200">
         <label className="block text-sm font-semibold text-gray-700 mb-3">
-          Calculation Method
+          {business.calculationMethod}
         </label>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
           {[
-            { value: 'simple', label: 'Simple ROI', desc: 'Basic percentage return', icon: Calculator },
-            { value: 'npv', label: 'NPV Analysis', desc: 'Time value of money', icon: DollarSign },
-            { value: 'cashflow', label: 'Cash Flow (IRR)', desc: 'Multiple periods', icon: BarChart3 }
+            { value: 'simple', label: business.simpleRoi, desc: business.simpleRoiDesc, icon: Calculator },
+            { value: 'npv', label: business.npvAnalysis, desc: business.npvAnalysisDesc, icon: DollarSign },
+            { value: 'cashflow', label: business.cashflowIrr, desc: business.cashflowIrrDesc, icon: BarChart3 }
           ].map((m) => {
             const Icon = m.icon;
             return (
@@ -271,7 +273,7 @@ export function AdvancedROICalculator() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Initial Investment ($)
+                {business.initialInvestment} ({currency})
               </label>
               <input
                 type="number"
@@ -283,7 +285,7 @@ export function AdvancedROICalculator() {
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Final Value ($)
+                {business.finalValue} ({currency})
               </label>
               <input
                 type="number"
@@ -295,7 +297,7 @@ export function AdvancedROICalculator() {
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Time Period (years)
+                {business.timePeriod} ({units.years})
               </label>
               <input
                 type="number"
@@ -308,7 +310,7 @@ export function AdvancedROICalculator() {
             {method === 'npv' && (
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Discount Rate (%)
+                  {business.discountRate} (%)
                 </label>
                 <input
                   type="number"
@@ -327,7 +329,7 @@ export function AdvancedROICalculator() {
         <div className="space-y-4">
           <div className="flex justify-between items-center">
             <label className="text-sm font-medium text-gray-700">
-              Cash Flows by Period
+              {business.cashFlowsByPeriod}
             </label>
             <div className="flex gap-2">
               <input
@@ -335,13 +337,13 @@ export function AdvancedROICalculator() {
                 value={discountRate}
                 onChange={(e) => setDiscountRate(e.target.value)}
                 className="w-24 p-2 border rounded-md text-sm"
-                placeholder="Rate %"
+                placeholder={business.ratePlaceholder}
               />
               <button
                 onClick={addCashFlow}
                 className="px-3 py-2 bg-purple-600 text-white text-sm rounded-md hover:bg-purple-700 transition"
               >
-                + Add Period
+                {business.addPeriod}
               </button>
             </div>
           </div>
@@ -385,7 +387,7 @@ export function AdvancedROICalculator() {
         className="w-full bg-gradient-to-r from-purple-600 to-pink-600 text-white py-3 rounded-lg hover:from-purple-700 hover:to-pink-700 transition-all font-semibold flex items-center justify-center gap-2 shadow-lg"
       >
         <Calculator className="w-5 h-5" />
-        Calculate ROI
+        {business.calculateRoi}
       </button>
 
       {/* Results */}
@@ -398,7 +400,7 @@ export function AdvancedROICalculator() {
                 <TrendingUp className="w-8 h-8" />
               </div>
               <div>
-                <div className="text-sm opacity-90">Return on Investment</div>
+                <div className="text-sm opacity-90">{business.returnOnInvestment}</div>
                 <div className="text-4xl font-bold">{result.roi.toFixed(2)}%</div>
               </div>
             </div>
@@ -406,25 +408,25 @@ export function AdvancedROICalculator() {
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4 pt-4 border-t border-white/20">
               {result.npv !== undefined && (
                 <div>
-                  <div className="text-xs opacity-75">NPV</div>
-                  <div className="text-lg font-semibold">${result.npv.toFixed(2)}</div>
+                  <div className="text-xs opacity-75">{business.npv}</div>
+                  <div className="text-lg font-semibold">{formatCurrency(result.npv)}</div>
                 </div>
               )}
               {result.irr !== undefined && (
                 <div>
-                  <div className="text-xs opacity-75">IRR</div>
-                  <div className="text-lg font-semibold">{result.irr.toFixed(2)}%</div>
+                  <div className="text-xs opacity-75">{business.irr}</div>
+                  <div className="text-lg font-semibold">{formatPct(result.irr)}</div>
                 </div>
               )}
               {result.paybackPeriod !== undefined && (
                 <div>
-                  <div className="text-xs opacity-75">Payback</div>
-                  <div className="text-lg font-semibold">{result.paybackPeriod.toFixed(1)} yrs</div>
+                  <div className="text-xs opacity-75">{business.payback}</div>
+                  <div className="text-lg font-semibold">{result.paybackPeriod.toFixed(1)} {units.years}</div>
                 </div>
               )}
               <div>
-                <div className="text-xs opacity-75">Net Profit</div>
-                <div className="text-lg font-semibold">${result.netProfit.toFixed(2)}</div>
+                <div className="text-xs opacity-75">{business.netProfit}</div>
+                <div className="text-lg font-semibold">{formatCurrency(result.netProfit)}</div>
               </div>
             </div>
           </div>
@@ -433,7 +435,7 @@ export function AdvancedROICalculator() {
           <div className="bg-white p-4 rounded-lg border border-gray-200">
             <h4 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
               <BarChart3 className="w-5 h-5 text-purple-600" />
-              Calculation Breakdown
+              {common.calculationBreakdown}
             </h4>
             <div className="space-y-1 text-sm font-mono text-gray-700">
               {result.steps.map((step, idx) => (
@@ -446,31 +448,31 @@ export function AdvancedROICalculator() {
           <div className="bg-gradient-to-r from-blue-50 to-cyan-50 p-4 rounded-lg border border-blue-200">
             <h4 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
               <PieChart className="w-5 h-5 text-blue-600" />
-              Investment Analysis
+              {common.investmentAnalysis}
             </h4>
             <ul className="space-y-2 text-sm text-gray-700">
               {result.roi > 15 && (
                 <li className="flex gap-2">
                   <span className="text-green-600">✅</span>
-                  <span>Excellent ROI - significantly above average market returns</span>
+                  <span>{business.roiExcellent}</span>
                 </li>
               )}
               {result.roi >= 8 && result.roi <= 15 && (
                 <li className="flex gap-2">
                   <span className="text-blue-600">✓</span>
-                  <span>Good ROI - comparable to market average</span>
+                  <span>{business.roiGood}</span>
                 </li>
               )}
               {result.roi > 0 && result.roi < 8 && (
                 <li className="flex gap-2">
                   <span className="text-yellow-600">⚠️</span>
-                  <span>Moderate ROI - consider alternative investments</span>
+                  <span>{business.roiModerate}</span>
                 </li>
               )}
               {result.roi <= 0 && (
                 <li className="flex gap-2">
                   <span className="text-red-600">❌</span>
-                  <span>Negative ROI - investment resulted in a loss</span>
+                  <span>{business.roiNegative}</span>
                 </li>
               )}
               
@@ -480,8 +482,7 @@ export function AdvancedROICalculator() {
                     {result.npv > 0 ? '✅' : '❌'}
                   </span>
                   <span>
-                    NPV is {result.npv > 0 ? 'positive' : 'negative'} - 
-                    investment {result.npv > 0 ? 'adds value' : 'destroys value'} in present terms
+                    {result.npv > 0 ? business.npvAddsValue : business.npvDestroysValue}
                   </span>
                 </li>
               )}
@@ -489,7 +490,7 @@ export function AdvancedROICalculator() {
               {result.irr !== undefined && result.irr > parseFloat(discountRate) && (
                 <li className="flex gap-2">
                   <span className="text-green-600">✅</span>
-                  <span>IRR ({result.irr.toFixed(1)}%) exceeds discount rate ({discountRate}%) - project is viable</span>
+                  <span>{business.irrExceeds(formatPct(result.irr), discountRate)}</span>
                 </li>
               )}
               
@@ -497,8 +498,8 @@ export function AdvancedROICalculator() {
                 <li className="flex gap-2">
                   <span className="text-blue-600">⏱️</span>
                   <span>
-                    Investment recovered in {result.paybackPeriod.toFixed(1)} periods
-                    {result.paybackPeriod < 3 ? ' - Quick payback' : result.paybackPeriod > 5 ? ' - Long payback period' : ''}
+                    {business.investmentRecoveredIn(result.paybackPeriod.toFixed(1))}
+                    {result.paybackPeriod < 3 ? ` - ${business.quickPayback}` : result.paybackPeriod > 5 ? ` - ${business.longPayback}` : ''}
                   </span>
                 </li>
               )}
