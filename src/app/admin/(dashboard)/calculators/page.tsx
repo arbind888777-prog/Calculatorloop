@@ -7,6 +7,7 @@ import { AdminButton } from "@/components/admin/ui/Button"
 import { Badge } from "@/components/admin/ui/Badge"
 import { AdminSelect } from "@/components/admin/ui/Select"
 import { PageLoader } from "@/components/admin/ui/Spinner"
+import { toast } from "sonner"
 
 interface CalcItem {
   id: string
@@ -21,6 +22,7 @@ interface CalcItem {
 export default function CalculatorsPage() {
   const [calculators, setCalculators] = useState<CalcItem[]>([])
   const [loading, setLoading] = useState(true)
+  const [syncing, setSyncing] = useState(false)
   const [page, setPage] = useState(1)
   const [totalPages, setTotalPages] = useState(1)
   const [total, setTotal] = useState(0)
@@ -53,6 +55,25 @@ export default function CalculatorsPage() {
     fetchCalculators()
   }, [fetchCalculators])
 
+  const handleSyncRegex = async () => {
+    if (confirm("Are you sure you want to import calculators from toolsData.ts? This will add any missing calculators.")) {
+      setSyncing(true)
+      try {
+        const res = await fetch("/api/admin/calculators/sync", { method: "POST" })
+        const data = await res.json()
+        if (data.success) {
+          toast.success(`Synced ${data.count} calculators successfully.`)
+          fetchCalculators()
+        } else {
+          toast.error(data.error || "Failed to sync calculators")
+        }
+      } catch (err) {
+        toast.error("An error occurred while syncing.")
+      }
+      setSyncing(false)
+    }
+  }
+
   return (
     <div>
       {/* Header */}
@@ -61,6 +82,9 @@ export default function CalculatorsPage() {
           {total} total calculators
         </p>
         <div style={{ display: "flex", gap: "8px" }}>
+          <AdminButton variant="outline" size="sm" onClick={handleSyncRegex} disabled={syncing}>
+            {syncing ? "Syncing..." : "📥 Import from Registry"}
+          </AdminButton>
           <AdminButton variant="outline" size="sm">
             🤖 AI Generate Descriptions
           </AdminButton>
@@ -133,7 +157,7 @@ export default function CalculatorsPage() {
                 {calculators.length === 0 ? (
                   <tr>
                     <td colSpan={6} style={{ textAlign: "center", padding: "40px", color: "#5a7090" }}>
-                      No calculators found. Import from registry to get started.
+                      No calculators found. Click "Import from Registry" to get started.
                     </td>
                   </tr>
                 ) : (

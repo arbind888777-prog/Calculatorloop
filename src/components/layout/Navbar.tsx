@@ -27,7 +27,8 @@ import {
   GraduationCap,
   FlaskConical,
   Laptop,
-  LogOut
+  LogOut,
+  ShieldAlert
 } from "lucide-react"
 import { NotificationBell } from "./NotificationBell"
 import {
@@ -130,6 +131,9 @@ export function Navbar() {
 
   const basePathname = stripLocale(pathname || '/')
   const isCalculatorPage = basePathname.startsWith('/calculator/')
+
+  const userRole = (session?.user as any)?.role || "USER"
+  const isAdmin = userRole === "SUPER_ADMIN" || userRole === "EDITOR"
 
 
   const navLinks = [
@@ -330,6 +334,14 @@ export function Navbar() {
                         <span>Favorites</span>
                       </Link>
                     </DropdownMenuItem>
+                    {isAdmin && (
+                      <DropdownMenuItem asChild>
+                        <Link href="/admin/calculators" className="text-blue-500 focus:text-blue-600">
+                          <ShieldAlert className="mr-2 h-4 w-4" />
+                          <span>Admin Dashboard</span>
+                        </Link>
+                      </DropdownMenuItem>
+                    )}
                     <DropdownMenuSeparator />
                     <DropdownMenuItem onClick={() => signOut()} className="text-red-600 focus:text-red-600">
                       <LogOut className="mr-2 h-4 w-4" />

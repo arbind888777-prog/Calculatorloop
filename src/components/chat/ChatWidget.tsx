@@ -136,9 +136,11 @@ export function ChatWidget() {
                         ? "bg-primary text-primary-foreground rounded-tr-none" 
                         : "bg-muted/50 border border-border/50 rounded-tl-none"
                     }`}>
-                      <ReactMarkdown className="prose prose-sm dark:prose-invert break-words">
-                        {msg.content}
-                      </ReactMarkdown>
+                      <div className="prose prose-sm dark:prose-invert break-words">
+                        <ReactMarkdown>
+                          {msg.content}
+                        </ReactMarkdown>
+                      </div>
                     </div>
                   </div>
                 </div>

@@ -1,45 +1,16 @@
-name: CI and Deploy CalculatorLoop
+name: Deploy CalculatorLoop
 
 on:
   push:
-    branches:
-      - main
-      - feat/**
-  pull_request:
-    branches:
-      - main
-  workflow_dispatch:
+    branches: [ main ]
 
 jobs:
-  verify:
+  build-and-deploy:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: npm
-
-      - name: Install Dependencies
-        run: npm ci
-
-      - name: Generate Prisma Client
-        run: npm run db:generate
-
-      - name: Type Check
-        run: npm run type-check
-
-      - name: Production Build
-        run: npm run build
-
-  deploy:
-    needs: verify
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    runs-on: ubuntu-latest
-    steps:
       - name: Deploy to VPS
         uses: appleboy/ssh-action@v1.0.3
         with:

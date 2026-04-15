@@ -112,13 +112,26 @@ export function useCloudSync(options: SyncOptions = {}) {
   const downloadFromCloud = useCallback(async () => {
     if (!session?.user) return
 
+    const safeSetItem = (key: string, data: any[], limit: number = 100) => {
+      try {
+        localStorage.setItem(key, JSON.stringify(data.slice(0, limit)))
+      } catch (e) {
+        console.warn(`Local storage quota exceeded for ${key}. Truncating to 20 items.`)
+        try {
+          localStorage.setItem(key, JSON.stringify(data.slice(0, 20)))
+        } catch (err) {
+          console.error(`Could not save to local storage for ${key}`)
+        }
+      }
+    }
+
     try {
       // Download history
       if (syncHistory) {
         const historyRes = await fetch('/api/user/history')
         if (historyRes.ok) {
           const { calculations } = await historyRes.json()
-          localStorage.setItem('calculationHistory', JSON.stringify(calculations))
+          safeSetItem('calculationHistory', calculations, 100)
         }
       }
 
@@ -127,7 +140,7 @@ export function useCloudSync(options: SyncOptions = {}) {
         const favRes = await fetch('/api/user/favorites')
         if (favRes.ok) {
           const { favorites } = await favRes.json()
-          localStorage.setItem('favoriteCalculators', JSON.stringify(favorites))
+          safeSetItem('favoriteCalculators', favorites, 100)
         }
       }
 
@@ -136,7 +149,7 @@ export function useCloudSync(options: SyncOptions = {}) {
         const savedRes = await fetch('/api/user/saved')
         if (savedRes.ok) {
           const { savedResults } = await savedRes.json()
-          localStorage.setItem('savedCalculations', JSON.stringify(savedResults))
+          safeSetItem('savedCalculations', savedResults, 100)
         }
       }
 

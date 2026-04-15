@@ -15,10 +15,7 @@ const PushNotificationPrompt = dynamic(
   () => import('@/components/pwa/PushNotificationPrompt').then((mod) => ({ default: mod.PushNotificationPrompt })),
   { ssr: false }
 )
-const AIAssistant = dynamic(
-  () => import('@/components/ui-ai/AIAssistant').then((mod) => ({ default: mod.AIAssistant })),
-  { ssr: false }
-)
+
 
 export function DeferredClientBits() {
   return (
@@ -27,7 +24,7 @@ export function DeferredClientBits() {
       <OfflineIndicator />
       <InstallPrompt />
       <PushNotificationPrompt />
-      <AIAssistant />
+
     </>
   )
 }
