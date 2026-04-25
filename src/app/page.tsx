@@ -18,9 +18,8 @@ import { RecentSection } from '@/components/sections/RecentSection'
 import { PopularSection } from '@/components/sections/PopularSection'
 import { FeaturesSection } from '@/components/sections/FeaturesSection'
 import { toolsData } from '@/lib/toolsData'
-import { implementedCalculatorIds } from '@/lib/calculatorRegistry'
-import { useSettings } from '@/components/providers/SettingsProvider'
 import { useTranslation } from '@/hooks/useTranslation'
+import { useSettings } from '@/components/providers/SettingsProvider'
 import { localizeToolMeta, localizeSubcategoryName } from '@/lib/toolLocalization'
 
 type DashboardTool = {
@@ -383,7 +382,7 @@ export default function HomePage() {
       .map((id) => {
         const category = (toolsData as any)[id]
         const calculators = Object.values(category.subcategories ?? {}).flatMap((sub: any) =>
-          (sub.calculators ?? []).filter((tool: any) => implementedCalculatorIds.has(tool.id))
+          (sub.calculators ?? [])
         )
         return {
           id,
@@ -429,7 +428,6 @@ export default function HomePage() {
     const subcategoryList: DashboardSubcategory[] = Object.entries(category.subcategories ?? {})
       .map(([key, sub]: any) => {
         const calculators: DashboardTool[] = (sub.calculators ?? [])
-          .filter((tool: any) => implementedCalculatorIds.has(tool.id))
           .map((tool: any) => ({
             id: String(tool.id),
             title: String(tool.title),

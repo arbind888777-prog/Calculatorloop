@@ -10,6 +10,8 @@ import { BlogPost, formatDate } from '@/lib/blogData'
 import { toolsData } from '@/lib/toolsData'
 import { Badge } from '@/components/ui/badge'
 
+import { localizeSubcategoryName, localizeToolMeta } from '@/lib/toolLocalization'
+
 interface BlogDashboardProps {
   posts: BlogPost[]
   language: string
@@ -21,10 +23,16 @@ type DashboardPost = BlogPost & {
   subcategoryKey?: string
 }
 
+type DashboardTool = {
+  id: string
+  title: string
+  description: string
+}
+
 type DashboardSubcategory = {
   key: string
   name: string
-  count: number
+  calculators: DashboardTool[]
 }
 
 const FINANCIAL_SUBCATEGORY_ORDER: string[] = [
@@ -78,15 +86,15 @@ function PostCard({ post, withLocale, categoryMeta, compact }: {
 
         {/* Title */}
         <h3 className={
-          "font-bold leading-snug group-hover:text-primary transition-colors duration-200 line-clamp-2 " +
+          "font-bold leading-snug group-hover:text-primary transition-colors duration-200 line-clamp-2 notranslate " +
           (compact ? "text-sm" : "text-base")
-        }>
+        } translate="no">
           {post.title}
         </h3>
 
         {/* Description */}
         {!compact && (
-          <p className="mt-2 text-sm text-muted-foreground line-clamp-2 leading-relaxed flex-1">
+          <p className="mt-2 text-sm text-muted-foreground line-clamp-2 leading-relaxed flex-1 notranslate" translate="no">
             {post.description}
           </p>
         )}
@@ -159,20 +167,50 @@ export function BlogDashboard({ posts, language, dict }: BlogDashboardProps) {
   }, [dict])
 
   const categories = useMemo(() => {
-    const allCategories = Array.from(new Set(posts.map((p) => p.category)))
-    const perCategory = allCategories
-      .map((cat) => {
-        const count = posts.filter((p) => p.category === cat).length
-        const meta = categoryMeta[cat] || { name: cat, icon: BookOpen, color: 'from-primary/20 to-primary/10' }
-        return { id: cat, name: meta.name, icon: meta.icon, color: meta.color, count }
+    const order = [
+      'all',
+      'latest',
+      'financial',
+      'health',
+      'math',
+      'construction',
+      'business',
+      'everyday',
+      'education',
+      'datetime',
+      'technology',
+      'scientific',
+    ]
+
+    const sevenDaysAgo = new Date()
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7)
+    const latestCount = posts.filter(p => new Date(p.publishedAt) >= sevenDaysAgo).length
+
+    const perCategory = order
+      .filter((id) => id !== 'all' && id !== 'latest')
+      .filter((id) => Boolean((toolsData as any)[id]) && Boolean((categoryMeta as any)[id]))
+      .map((id) => {
+        const category = (toolsData as any)[id]
+        const calculators = Object.values(category.subcategories ?? {}).flatMap((sub: any) =>
+          (sub.calculators ?? [])
+        )
+        const meta = (categoryMeta as any)[id]
+        return {
+          id,
+          name: meta?.name as string || id,
+          icon: meta?.icon || BookOpen,
+          color: meta?.color || 'from-primary/20 to-primary/10',
+          count: calculators.length,
+          isSpecial: false
+        }
       })
-      .sort((a, b) => b.count - a.count)
 
     return [
-      { id: 'all', name: dict.blog?.allCategories || 'All', icon: Star, color: 'from-primary to-primary', count: posts.length },
+      { id: 'all', name: dict.blog?.allCategories || 'All', icon: Star, color: 'from-primary to-primary', count: posts.length, isSpecial: true },
+      { id: 'latest', name: dict.blog?.latest7Days || 'Latest (7d)', icon: Clock, color: 'from-emerald-500 to-teal-500', count: latestCount, isSpecial: true },
       ...perCategory,
     ]
-  }, [posts, categoryMeta, dict])
+  }, [categoryMeta, posts, dict])
 
   const [activeCategoryId, setActiveCategoryId] = useState<string>('all')
   const [activeSubcategoryKey, setActiveSubcategoryKey] = useState<string | null>(null)
@@ -193,32 +231,37 @@ export function BlogDashboard({ posts, language, dict }: BlogDashboardProps) {
   const activeCategory = categories.find((c) => c.id === activeCategoryId)
 
   const activeSubcategories = useMemo((): DashboardSubcategory[] => {
-    if (activeCategoryId === 'all') return []
+    if (activeCategoryId === 'all' || activeCategoryId === 'latest') return []
+    
+    const category = (toolsData as any)[activeCategoryId]
+    if (!category) return []
+
+    const subcategoryList: DashboardSubcategory[] = Object.entries(category.subcategories ?? {})
+      .map(([key, sub]: any) => {
+        const calculators: DashboardTool[] = (sub.calculators ?? [])
+          .map((tool: any) => ({
+            id: String(tool.id),
+            title: localizeToolMeta({ dict, toolId: String(tool.id), fallbackTitle: String(tool.title) }).title,
+            description: String(tool.description),
+          }))
+
+        return { 
+          key: String(key), 
+          name: localizeSubcategoryName(dict, String(key), String(sub.name)), 
+          calculators 
+        }
+      })
+      .filter((s) => s.calculators.length > 0)
+      
     if (activeCategoryId === 'financial') {
-      const category = (toolsData as any)?.financial
-      const raw = category?.subcategories ?? {}
-      const byKey = new Map<string, DashboardSubcategory>()
-      for (const key of Object.keys(raw)) {
-        const name = String(raw[key]?.name ?? key)
-        const count = posts.filter(
-          (p) => p.category === 'financial' && (p as DashboardPost).subcategoryKey === key
-        ).length
-        byKey.set(key, { key, name, count })
-      }
+      const byKey = new Map(subcategoryList.map(s => [s.key, s]))
       const orderedKeys = FINANCIAL_SUBCATEGORY_ORDER.filter((k) => byKey.has(k))
-      const remaining = Array.from(byKey.keys()).filter((k) => !orderedKeys.includes(k)).sort()
-      return [...orderedKeys, ...remaining].map((k) => byKey.get(k) as DashboardSubcategory)
+      const remaining = subcategoryList.map(s => s.key).filter((k) => !orderedKeys.includes(k)).sort()
+      return [...orderedKeys, ...remaining].map(k => byKey.get(k) as DashboardSubcategory)
     }
-    const map = new Map<string, DashboardSubcategory>()
-    for (const p of posts) {
-      if (p.category !== activeCategoryId) continue
-      const key = (p as DashboardPost).subcategoryKey
-      if (!key) continue
-      const existing = map.get(key)
-      map.set(key, { key, name: key, count: (existing?.count ?? 0) + 1 })
-    }
-    return Array.from(map.values()).sort((a, b) => b.count - a.count)
-  }, [activeCategoryId, posts])
+
+    return subcategoryList
+  }, [activeCategoryId, dict])
 
   const selectedSubcategory = useMemo(() => {
     if (!activeSubcategoryKey) return null
@@ -243,9 +286,18 @@ export function BlogDashboard({ posts, language, dict }: BlogDashboardProps) {
 
   const filteredPosts = useMemo((): DashboardPost[] => {
     let result: DashboardPost[]
-    if (activeCategoryId === 'all') result = posts as DashboardPost[]
-    else if (!activeSubcategoryKey) result = posts.filter((p) => p.category === activeCategoryId) as DashboardPost[]
-    else result = posts.filter((p) => p.category === activeCategoryId && (p as DashboardPost).subcategoryKey === activeSubcategoryKey) as DashboardPost[]
+    if (activeCategoryId === 'all') {
+      result = posts as DashboardPost[]
+    } else if (activeCategoryId === 'latest') {
+      const sevenDaysAgo = new Date()
+      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7)
+      result = (posts as DashboardPost[]).filter(p => new Date(p.publishedAt) >= sevenDaysAgo)
+      result.sort((a, b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime())
+    } else if (!activeSubcategoryKey) {
+      result = posts.filter((p) => p.category === activeCategoryId) as DashboardPost[]
+    } else {
+      result = posts.filter((p) => p.category === activeCategoryId && (p as DashboardPost).subcategoryKey === activeSubcategoryKey) as DashboardPost[]
+    }
 
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase().trim()
@@ -455,7 +507,7 @@ export function BlogDashboard({ posts, language, dict }: BlogDashboardProps) {
           {/* Category overview on "All" */}
           {activeCategoryId === 'all' && !searchQuery && (
             <div className="grid grid-cols-2 gap-3 mb-6">
-              {categories.filter((c) => c.id !== 'all' && c.count > 0).map((c) => {
+              {categories.filter((c) => c.id !== 'all' && c.id !== 'latest' && c.count > 0).map((c) => {
                 const CategoryIcon = c.icon || BookOpen
                 return (
                   <button
@@ -506,7 +558,7 @@ export function BlogDashboard({ posts, language, dict }: BlogDashboardProps) {
                         : "bg-secondary/50 text-muted-foreground")
                     }
                   >
-                    {sub.name} ({sub.count})
+                    {sub.name} ({sub.calculators.length})
                   </button>
                 ))}
               </div>
@@ -579,8 +631,8 @@ export function BlogDashboard({ posts, language, dict }: BlogDashboardProps) {
                   <div className="p-3 space-y-0.5">
                     {categories.map((c) => {
                       const isActive = c.id === activeCategoryId
-                      const isExpanded = c.id !== 'all' && expandedCategoryId === c.id
-                      const disabled = c.id !== 'all' && c.count === 0
+                      const isExpanded = c.id !== 'all' && c.id !== 'latest' && expandedCategoryId === c.id
+                      const disabled = c.id !== 'all' && c.id !== 'latest' && c.count === 0
                       const CategoryIcon = c.icon || BookOpen
                       
                       return (
@@ -590,6 +642,7 @@ export function BlogDashboard({ posts, language, dict }: BlogDashboardProps) {
                             onClick={() => {
                               if (disabled) return
                               if (c.id === 'all') { selectCategory('all'); return }
+                              if (c.id === 'latest') { selectCategory('latest'); return }
                               if (c.id === activeCategoryId) {
                                 setExpandedCategoryId((prev) => (prev === c.id ? null : c.id))
                                 return
@@ -653,25 +706,42 @@ export function BlogDashboard({ posts, language, dict }: BlogDashboardProps) {
                               {activeSubcategories.map((sub) => {
                                 const isSubActive = sub.key === activeSubcategoryKey
                                 return (
-                                  <button
-                                    key={sub.key}
-                                    type="button"
-                                    onClick={() => setActiveSubcategoryKey(sub.key)}
-                                    className={
-                                      "w-full flex items-center justify-between rounded-lg px-3 py-1.5 text-xs transition-all " +
-                                      (isSubActive
-                                        ? "bg-primary/10 text-foreground font-medium border border-primary/20"
-                                        : "text-muted-foreground hover:text-foreground hover:bg-secondary/40")
-                                    }
-                                  >
-                                    <span className="truncate">{sub.name}</span>
-                                    <span className={
-                                      "ml-2 shrink-0 rounded-full px-1.5 py-0 text-[10px] " +
-                                      (isSubActive ? 'bg-primary/20 text-primary' : 'bg-secondary/80 text-muted-foreground')
-                                    }>
-                                      {sub.count}
-                                    </span>
-                                  </button>
+                                  <div key={sub.key}>
+                                    <button
+                                      type="button"
+                                      onClick={() => setActiveSubcategoryKey(isSubActive ? null : sub.key)}
+                                      className={
+                                        "w-full flex items-center justify-between rounded-lg px-3 py-1.5 text-xs transition-all " +
+                                        (isSubActive
+                                          ? "bg-primary/10 text-foreground font-medium border border-primary/20"
+                                          : "text-muted-foreground hover:text-foreground hover:bg-secondary/40")
+                                      }
+                                    >
+                                      <span className="truncate flex-1 text-left">{sub.name}</span>
+                                      <span className={
+                                        "ml-2 shrink-0 rounded-full px-1.5 py-0 text-[10px] " +
+                                        (isSubActive ? 'bg-primary/20 text-primary' : 'bg-secondary/80 text-muted-foreground')
+                                      }>
+                                        {sub.calculators.length}
+                                      </span>
+                                    </button>
+                                    
+                                    {/* TOOLS ACCORDION */}
+                                    {isSubActive && sub.calculators.length > 0 && (
+                                      <div className="mt-1 mb-2 ml-2 space-y-0.5 border-l-2 border-primary/10 pl-2">
+                                        {sub.calculators.map(tool => (
+                                          <Link
+                                            key={tool.id}
+                                            href={withLocale(`/calculator/${tool.id}`)}
+                                            className="block w-full text-left rounded-lg px-3 py-1.5 text-[11px] text-muted-foreground hover:text-foreground hover:bg-secondary/50 truncate transition-colors notranslate"
+                                            translate="no"
+                                          >
+                                            {tool.title}
+                                          </Link>
+                                        ))}
+                                      </div>
+                                    )}
+                                  </div>
                                 )
                               })}
                             </div>
@@ -741,7 +811,7 @@ export function BlogDashboard({ posts, language, dict }: BlogDashboardProps) {
                   {/* Category grid (when "All" selected and no search) */}
                   {activeCategoryId === 'all' && !searchQuery && (
                     <div className="grid grid-cols-2 xl:grid-cols-3 gap-4 mb-8">
-                      {categories.filter((c) => c.id !== 'all' && c.count > 0).map((c) => {
+                      {categories.filter((c) => c.id !== 'all' && c.id !== 'latest' && c.count > 0).map((c) => {
                         const CategoryIcon = c.icon || BookOpen
                         return (
                           <button
@@ -772,8 +842,8 @@ export function BlogDashboard({ posts, language, dict }: BlogDashboardProps) {
                     </div>
                   )}
 
-                  {/* All posts (when "All" selected with search active) */}
-                  {activeCategoryId === 'all' && searchQuery && (
+                  {/* All posts (when "All" selected with search active) OR Latest */}
+                  {((activeCategoryId === 'all' && searchQuery) || activeCategoryId === 'latest') && (
                     <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
                       {filteredPosts.map((post) => (
                         <PostCard key={post.slug} post={post} withLocale={withLocale} categoryMeta={categoryMeta} />
@@ -799,7 +869,7 @@ export function BlogDashboard({ posts, language, dict }: BlogDashboardProps) {
                   )}
 
                   {/* Category selected - show posts */}
-                  {activeCategoryId !== 'all' && (
+                  {activeCategoryId !== 'all' && activeCategoryId !== 'latest' && (
                     <div className="space-y-4">
                       {!searchQuery && !selectedSubcategory && (
                         <div className="flex items-center justify-between">

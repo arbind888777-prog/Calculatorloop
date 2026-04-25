@@ -145,7 +145,15 @@ export default function LoginClient() {
             </div>
 
             <div>
-              <Label htmlFor="password">Password</Label>
+              <div className="flex items-center justify-between">
+                <Label htmlFor="password">Password</Label>
+                <Link
+                  href={withLocale("/forgot-password")}
+                  className="text-sm font-medium text-primary hover:text-primary/90"
+                >
+                  Forgot password?
+                </Link>
+              </div>
               <div className="mt-1">
                 <Input
                   id="password"

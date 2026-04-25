@@ -234,9 +234,9 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
             {normalizedPost.category}
           </Badge>
 
-          <h1 className="text-4xl md:text-5xl font-bold leading-tight">{normalizedPost.title}</h1>
+          <h1 className="text-4xl md:text-5xl font-bold leading-tight notranslate" translate="no">{normalizedPost.title}</h1>
 
-          <p className="text-xl text-muted-foreground">{normalizedPost.description}</p>
+          <p className="text-xl text-muted-foreground notranslate" translate="no">{normalizedPost.description}</p>
 
           {/* Meta Information */}
           <div className="flex flex-wrap items-center gap-6 text-sm text-muted-foreground">
@@ -280,7 +280,8 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
 
         {/* Article Content */}
         <div
-          className="prose prose-lg dark:prose-invert max-w-none
+          translate="no"
+          className="prose prose-lg dark:prose-invert max-w-none notranslate
             prose-headings:font-bold prose-headings:text-foreground
             prose-h1:text-4xl prose-h2:text-3xl prose-h3:text-2xl
             prose-p:text-muted-foreground prose-p:leading-relaxed

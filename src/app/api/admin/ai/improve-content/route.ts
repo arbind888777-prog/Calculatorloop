@@ -1,10 +1,14 @@
 import { NextRequest, NextResponse } from "next/server"
 import { GoogleGenerativeAI } from "@google/generative-ai"
+import { requireAdmin } from "@/lib/adminGuard"
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "")
 
 export async function POST(request: NextRequest) {
   try {
+    const guard = await requireAdmin("editor")
+    if (!guard.ok) return guard.response
+
     const { input } = await request.json()
     if (!input) {
       return NextResponse.json({ error: "Input required" }, { status: 400 })

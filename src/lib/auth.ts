@@ -6,7 +6,7 @@ import { prisma } from "@/lib/prisma"
 import bcrypt from "bcryptjs"
 import { sanitizeEmail } from "@/lib/security/sanitize"
 import { normalizeSiteUrl } from "@/lib/siteUrl"
-import { checkRateLimit } from "@/lib/security/rateLimit"
+import { checkRateLimit, getClientIdentifier } from "@/lib/security/rateLimit"
 
 const hasGoogleOAuth =
   !!process.env.GOOGLE_CLIENT_ID && !!process.env.GOOGLE_CLIENT_SECRET
@@ -67,7 +67,6 @@ export const authOptions: NextAuthOptions = {
         GoogleProvider({
           clientId: process.env.GOOGLE_CLIENT_ID!,
           clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
-          allowDangerousEmailAccountLinking: true,
         }),
       ]
       : []),
@@ -77,15 +76,17 @@ export const authOptions: NextAuthOptions = {
         email: { label: "Email", type: "email" },
         password: { label: "Password", type: "password" },
       },
-      async authorize(credentials) {
+      async authorize(credentials, request) {
         if (!credentials?.email || !credentials?.password) {
           return null
         }
 
         const email = sanitizeEmail(credentials.email)
+        const clientId = getClientIdentifier(request)
+        const rateLimitKey = `${email}:${clientId}`
 
-        // Rate-limit login attempts per email to prevent brute-force
-        const rateCheck = checkRateLimit(email, "adminLogin")
+        // Rate-limit login attempts per email and client identifier to reduce brute-force risk.
+        const rateCheck = checkRateLimit(rateLimitKey, "adminLogin")
         if (!rateCheck.allowed) {
           throw new Error(`Too many login attempts. Try again in ${rateCheck.retryAfter} seconds.`)
         }

@@ -6,11 +6,41 @@ interface Params {
   params: Promise<{ id: string }>
 }
 
+type BlogUpdatePayload = {
+  slug?: string
+  category?: string | null
+  subcategory?: string | null
+  linkedCalculatorId?: string | null
+  featuredImage?: string | null
+  tags?: string[]
+  status?: "DRAFT" | "REVIEW" | "PUBLISHED" | "SCHEDULED"
+  scheduledAt?: string | null
+}
+
+async function resolveLinkedCalculatorId(input?: string | null) {
+  if (!input) return null
+
+  const calculator = await prisma.calculator.findFirst({
+    where: {
+      OR: [
+        { id: input },
+        { slug: input },
+      ],
+    },
+    select: { id: true },
+  })
+
+  return calculator?.id ?? null
+}
+
 /**
  * GET /api/admin/blog/[id] — Get single blog post with all translations
  */
 export async function GET(_request: NextRequest, { params }: Params) {
   try {
+    const guard = await requireAdmin("viewer")
+    if (!guard.ok) return guard.response
+
     const { id } = await params
 
     const blogPost = await prisma.blogPost.findUnique({
@@ -19,8 +49,11 @@ export async function GET(_request: NextRequest, { params }: Params) {
         translations: true,
         author: { select: { name: true, email: true } },
         calculator: {
-          select: { id: true, slug: true },
-          // Include first EN translation for display name
+          select: { 
+            id: true, 
+            slug: true,
+            translations: { where: { language: 'en' }, select: { title: true } }
+          },
         },
       },
     })
@@ -49,10 +82,11 @@ export async function PUT(request: NextRequest, { params }: Params) {
     const session = guard.session
 
     const { id } = await params
-    const body = await request.json()
+    const body = await request.json() as BlogUpdatePayload
     const {
       slug,
       category,
+      subcategory,
       linkedCalculatorId,
       featuredImage,
       tags,
@@ -65,12 +99,32 @@ export async function PUT(request: NextRequest, { params }: Params) {
       return NextResponse.json({ error: "Blog post not found" }, { status: 404 })
     }
 
+    const normalizedSlug = slug?.trim()
+    if (normalizedSlug && normalizedSlug !== existing.slug) {
+      const duplicate = await prisma.blogPost.findUnique({ where: { slug: normalizedSlug } })
+      if (duplicate && duplicate.id !== id) {
+        return NextResponse.json({ error: "A blog post with this slug already exists" }, { status: 409 })
+      }
+    }
+
+    const resolvedCalculatorId = linkedCalculatorId === undefined
+      ? undefined
+      : await resolveLinkedCalculatorId(linkedCalculatorId)
+
+    if (linkedCalculatorId !== undefined && linkedCalculatorId && !resolvedCalculatorId) {
+      return NextResponse.json(
+        { error: "Linked calculator not found. Choose a valid calculator." },
+        { status: 400 }
+      )
+    }
+
     const blogPost = await prisma.blogPost.update({
       where: { id },
       data: {
-        ...(slug !== undefined && { slug }),
+        ...(slug !== undefined && { slug: normalizedSlug || existing.slug }),
         ...(category !== undefined && { category }),
-        ...(linkedCalculatorId !== undefined && { linkedCalculatorId: linkedCalculatorId || null }),
+        ...(subcategory !== undefined && { subcategory }),
+        ...(linkedCalculatorId !== undefined && { linkedCalculatorId: resolvedCalculatorId || null }),
         ...(featuredImage !== undefined && { featuredImage }),
         ...(tags !== undefined && { tags }),
         ...(status !== undefined && { status }),

@@ -38,6 +38,7 @@ export const RichEditor = forwardRef<RichEditorHandle, RichEditorProps>(function
   ref
 ) {
   const editor = useEditor({
+    immediatelyRender: false,
     extensions: [
       StarterKit.configure({
         codeBlock: false,
@@ -177,6 +178,17 @@ export const RichEditor = forwardRef<RichEditorHandle, RichEditorProps>(function
         onOpenVideoModal={onOpenVideoModal}
       />
       <EditorContent editor={editor} />
+      <div
+        style={{
+          borderTop: "1px solid #1c2a3d",
+          padding: "10px 14px",
+          fontSize: "11px",
+          color: "#7c93b3",
+          background: "rgba(8,13,26,0.55)",
+        }}
+      >
+        Paste formatted content, drop screenshots into the editor, or use the media buttons to place images and video exactly where you want them.
+      </div>
       <style>{`
         .tiptap p.is-editor-empty:first-child::before {
           content: attr(data-placeholder);

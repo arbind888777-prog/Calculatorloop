@@ -27,7 +27,11 @@ function LoginForm() {
       })
 
       if (result?.error) {
-        setError("Invalid email or password")
+        setError(
+          result.error.includes("Too many login attempts")
+            ? result.error
+            : "Invalid email or password"
+        )
         setLoading(false)
         return
       }

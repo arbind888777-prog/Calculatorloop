@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
-import { getServerSession } from "next-auth"
-import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
+import { requireAdmin } from "@/lib/adminGuard"
 
 interface Params {
   params: Promise<{ id: string }>
@@ -12,10 +11,9 @@ interface Params {
  */
 export async function POST(request: NextRequest, { params }: Params) {
   try {
-    const session = await getServerSession(authOptions)
-    if (!session?.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
+    const guard = await requireAdmin("editor")
+    if (!guard.ok) return guard.response
+    const session = guard.session
 
     const { id } = await params
 

@@ -2,7 +2,6 @@ import { notFound } from 'next/navigation'
 import type { Metadata } from 'next'
 import { headers } from 'next/headers'
 import { toolsData } from '@/lib/toolsData'
-import { implementedCalculatorIds } from '@/lib/implementedCalculators'
 import { CategoryPageClient } from '@/components/pages/CategoryPageClient'
 import { getSiteUrl } from '@/lib/siteUrl'
 import { FAQSection } from '@/components/calculators/ui/FAQSection'
@@ -66,10 +65,10 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
   }
 
   const calculatorsCount = Object.values(categoryData.subcategories ?? {}).reduce((sum, sub) => {
-    return sum + sub.calculators.filter((calc) => implementedCalculatorIds.has(calc.id)).length
+    return sum + sub.calculators.length
   }, 0)
   const toolTitles = Object.values(categoryData.subcategories ?? {}).flatMap((sub) =>
-    sub.calculators.filter((calc) => implementedCalculatorIds.has(calc.id)).map((calc) => calc.title)
+    sub.calculators.map((calc) => calc.title)
   )
 
   const categoryName = getLocalizedCategoryName(categoryId, dict, readableNames[categoryId] || 'Calculators')
@@ -142,7 +141,7 @@ export default async function CategoryPage({ params }: { params: Promise<{ id: s
     ? Object.entries(categoryData.subcategories).map(([key, sub]) => ({
         key,
         name: localizeSubcategoryName(dict, key, sub.name),
-        calculators: sub.calculators.filter((calc) => implementedCalculatorIds.has(calc.id)),
+        calculators: sub.calculators,
       }))
     : []
 

@@ -4,7 +4,6 @@
 import Link from 'next/link'
 import { Heart, Calendar, DollarSign, Binary, GraduationCap, Laptop, FlaskConical, Wrench, Briefcase, Home, ArrowRight } from "lucide-react"
 import { toolsData } from '@/lib/toolsData'
-import { implementedCalculatorIds } from '@/lib/implementedCalculators'
 import { useSettings } from "@/components/providers/SettingsProvider"
 import { getMergedTranslations } from "@/lib/translations"
 
@@ -81,7 +80,7 @@ export function CategorySection() {
   const categories = Object.entries(toolsData)
     .map(([id, data]) => {
       const calculators = Object.values(data.subcategories ?? {}).flatMap((subcategory) =>
-        subcategory.calculators.filter((calc) => implementedCalculatorIds.has(calc.id))
+        subcategory.calculators
       )
       return {
         id,

@@ -9,6 +9,43 @@ import { AdminInput } from "@/components/admin/ui/Input"
 import { Modal } from "@/components/admin/ui/Modal"
 import { Spinner } from "@/components/admin/ui/Spinner"
 
+// ── Toast ─────────────────────────────────────────
+function Toast({ message, type, onClose }: { message:string; type:"success"|"error"; onClose:()=>void }) {
+  useEffect(() => { const t = setTimeout(onClose, 3500); return () => clearTimeout(t) }, [onClose])
+  return (
+    <div style={{
+      position:"fixed", bottom:"24px", right:"24px", zIndex:9999,
+      padding:"12px 20px", borderRadius:"10px", fontSize:"13px", fontWeight:500,
+      boxShadow:"0 8px 32px rgba(0,0,0,0.4)",
+      background: type==="success" ? "rgba(16,185,129,0.15)" : "rgba(239,68,68,0.15)",
+      border:`1px solid ${type==="success" ? "rgba(16,185,129,0.4)" : "rgba(239,68,68,0.4)"}`,
+      color: type==="success" ? "#10b981" : "#f87171",
+      display:"flex", alignItems:"center", gap:"8px",
+    }}>
+      {type==="success" ? "✅" : "❌"} {message}
+    </div>
+  )
+}
+
+// ── Confirm Modal ─────────────────────────────────
+function ConfirmModal({ isOpen, message, onConfirm, onCancel, loading }: {
+  isOpen:boolean; message:string; onConfirm:()=>void; onCancel:()=>void; loading:boolean
+}) {
+  if (!isOpen) return null
+  return (
+    <div style={{ position:"fixed", inset:0, zIndex:1000, background:"rgba(0,0,0,0.6)", backdropFilter:"blur(4px)", display:"flex", alignItems:"center", justifyContent:"center", padding:"16px" }}>
+      <div style={{ background:"#131d2e", border:"1px solid #1c2a3d", borderRadius:"14px", padding:"28px", maxWidth:"380px", width:"100%", boxShadow:"0 24px 64px rgba(0,0,0,0.5)" }}>
+        <div style={{ fontSize:"32px", textAlign:"center", marginBottom:"16px" }}>⚠️</div>
+        <p style={{ margin:"0 0 24px 0", fontSize:"14px", color:"#cbd5e1", textAlign:"center", lineHeight:1.6 }}>{message}</p>
+        <div style={{ display:"flex", gap:"12px", justifyContent:"center" }}>
+          <AdminButton variant="outline" onClick={onCancel}>Cancel</AdminButton>
+          <AdminButton variant="danger" onClick={onConfirm} loading={loading}>Remove</AdminButton>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // Typing interfaces
 interface BulkTranslation extends Record<string, unknown> {
   id: string
@@ -28,7 +65,11 @@ interface Keyword extends Record<string, unknown> {
 
 export default function SEOPage() {
   const [sitemapStatus, setSitemapStatus] = useState<"idle" | "generating" | "done">("idle")
-  
+  const [toast, setToast] = useState<{ message:string; type:"success"|"error" }|null>(null)
+  const [deleteKeyword, setDeleteKeyword] = useState<string|null>(null)
+  const [deleteLoading, setDeleteLoading] = useState(false)
+  const showToast = (message:string, type:"success"|"error"="success") => setToast({ message, type })
+
   // Keyword Tracker State
   const [keywords, setKeywords] = useState<Keyword[]>([])
   const [loadingKeywords, setLoadingKeywords] = useState(true)
@@ -112,14 +153,17 @@ export default function SEOPage() {
     }
   }
 
-  const handleDeleteKeyword = async (id: string) => {
-    if (!confirm("Remove this keyword from tracking?")) return;
+  const handleDeleteKeyword = async () => {
+    if (!deleteKeyword) return
+    setDeleteLoading(true)
     try {
-      const res = await fetch(`/api/admin/seo/keywords/${id}`, { method: "DELETE" })
-      if (res.ok) fetchKeywords()
+      const res = await fetch(`/api/admin/seo/keywords/${deleteKeyword}`, { method: "DELETE" })
+      if (res.ok) { fetchKeywords(); showToast("Keyword removed.") }
     } catch (e) {
-      console.error(e)
+      console.error(e); showToast("Failed to delete keyword", "error")
     }
+    setDeleteLoading(false)
+    setDeleteKeyword(null)
   }
 
   const handleBulkChange = (id: string, field: "metaTitle" | "metaDesc", value: string) => {
@@ -135,12 +179,10 @@ export default function SEOPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ updates })
       })
-      if (res.ok) {
-        alert("Bulk save complete!")
-        fetchBulkData()
-      }
+      if (res.ok) { showToast("All meta changes saved!"); fetchBulkData() }
+      else showToast("Save failed", "error")
     } catch (e) {
-      console.error(e)
+      console.error(e); showToast("Save failed", "error")
     } finally {
       setSavingBulk(false)
     }
@@ -167,7 +209,7 @@ export default function SEOPage() {
     },
     { key: "actions", header: "", render: (k: Keyword) => (
       <div style={{ textAlign: "right" }}>
-        <AdminButton variant="ghost" size="sm" onClick={() => handleDeleteKeyword(k.id)}>🗑️ Remove</AdminButton>
+        <AdminButton variant="ghost" size="sm" onClick={() => setDeleteKeyword(k.id)}>🗑️ Remove</AdminButton>
       </div>
     )}
   ]
@@ -205,12 +247,21 @@ export default function SEOPage() {
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
+      {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
+      <ConfirmModal
+        isOpen={!!deleteKeyword}
+        message="Remove this keyword from tracking? This cannot be undone."
+        onConfirm={handleDeleteKeyword}
+        onCancel={() => setDeleteKeyword(null)}
+        loading={deleteLoading}
+      />
+
       <div>
         <h1 style={{ fontSize: "24px", fontWeight: 700, margin: "0 0 4px 0", color: "#e2e8f0" }}>SEO Manager</h1>
         <p style={{ margin: 0, color: "#94a3b8", fontSize: "14px" }}>Site maps, Bulk Meta tracking, and SERP Keyword tracking</p>
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "12px" }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(140px,1fr))", gap: "12px" }}>
         {[
           { label: "Sitemap", status: "Active", icon: "🗺️", color: "green" as const },
           { label: "hreflang Tags", status: "Configured", icon: "🌍", color: "green" as const },

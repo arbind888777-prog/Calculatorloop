@@ -100,6 +100,79 @@ export async function sendWelcomeEmail(to: string, name: string) {
 }
 
 /**
+ * Send password reset email
+ */
+export async function sendPasswordResetEmail(to: string, resetLink: string) {
+  const html = generatePasswordResetEmailHTML(resetLink);
+
+  return sendEmail({
+    to,
+    subject: 'Reset your password - Calculator Pro',
+    html,
+    tags: [{ name: 'category', value: 'reset-password' }],
+  });
+}
+
+/**
+ * Generate HTML for password reset email
+ */
+function generatePasswordResetEmailHTML(resetLink: string): string {
+  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://calculatorloop.com';
+
+  return \`
+    <!DOCTYPE html>
+    <html>
+      <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Reset Password</title>
+        <style>
+          body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+          }
+          .container {
+            background-color: #ffffff;
+            border-radius: 8px;
+            padding: 40px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+          }
+          h1 {
+            color: #1a1a1a;
+            text-align: center;
+          }
+          .button {
+            display: inline-block;
+            padding: 14px 36px;
+            background: linear-gradient(135deg, #00D4FF 0%, #8B5CF6 100%);
+            color: #ffffff;
+            text-decoration: none;
+            border-radius: 6px;
+            font-weight: 600;
+          }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <h1>Password Reset Request</h1>
+          <p>We received a request to reset the password for your account associated with this email address.</p>
+          <p>Click the button below to reset your password. This link will expire in 1 hour.</p>
+          <div style="text-align: center; margin: 32px 0;">
+            <a href="\${resetLink}" class="button">Reset Password</a>
+          </div>
+          <p>If you did not request this, you can safely ignore this email.</p>
+        </div>
+      </body>
+    </html>
+  \`;
+}
+
+/**
  * Generate HTML for calculation results email
  */
 function generateCalculationEmailHTML(

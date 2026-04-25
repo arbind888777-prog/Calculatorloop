@@ -2,6 +2,124 @@ import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { requireAdmin } from "@/lib/adminGuard"
 
+type BlogPayload = {
+  slug?: string
+  category?: string | null
+  subcategory?: string | null
+  linkedCalculatorId?: string | null
+  featuredImage?: string | null
+  tags?: string[]
+  status?: "DRAFT" | "REVIEW" | "PUBLISHED" | "SCHEDULED"
+  scheduledAt?: string | null
+  translations?: Array<{
+    language: string
+    title: string
+    content?: string
+    metaTitle?: string
+    metaDesc?: string
+    urlSlug?: string
+    isPublished?: boolean
+    wordCount?: number
+  }>
+}
+
+function normalizeSlug(value?: string | null) {
+  if (!value) return ""
+
+  return value
+    .trim()
+    .toLowerCase()
+    .replace(/[^\p{L}\p{N}]+/gu, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 80)
+}
+
+async function generateUniqueBlogSlug(baseSlug: string) {
+  const normalizedBase = normalizeSlug(baseSlug)
+  let candidate = normalizedBase
+  let suffix = 2
+
+  if (!candidate) {
+    candidate = `post-${Date.now()}`
+  }
+
+  while (await prisma.blogPost.findUnique({ where: { slug: candidate }, select: { id: true } })) {
+    candidate = `${normalizedBase}-${suffix}`
+    suffix += 1
+  }
+
+  return candidate
+}
+
+async function generateUniqueTranslationSlug(baseSlug: string, reservedSlugs?: Set<string>) {
+  const normalizedBase = normalizeSlug(baseSlug)
+  let candidate = normalizedBase
+  let suffix = 2
+
+  if (!candidate) {
+    candidate = `post-${Date.now()}`
+  }
+
+  while (
+    reservedSlugs?.has(candidate) ||
+    await prisma.blogPostTranslation.findUnique({ where: { urlSlug: candidate }, select: { id: true } })
+  ) {
+    candidate = `${normalizedBase}-${suffix}`
+    suffix += 1
+  }
+
+  reservedSlugs?.add(candidate)
+  return candidate
+}
+
+async function resolveLinkedCalculatorId(input?: string | null) {
+  if (!input) return null
+
+  const calculator = await prisma.calculator.findFirst({
+    where: {
+      OR: [
+        { id: input },
+        { slug: input },
+      ],
+    },
+    select: { id: true },
+  })
+
+  return calculator?.id ?? null
+}
+
+function buildBlogSummary(posts: Array<{ status: string; category: string | null }>, total: number) {
+  const summary = {
+    total,
+    published: 0,
+    drafts: 0,
+    review: 0,
+    scheduled: 0,
+    uncategorized: 0,
+  }
+
+  const categoryCounts: Record<string, number> = {}
+
+  for (const post of posts) {
+    if (post.status === "PUBLISHED") summary.published += 1
+    if (post.status === "DRAFT") summary.drafts += 1
+    if (post.status === "REVIEW") summary.review += 1
+    if (post.status === "SCHEDULED") summary.scheduled += 1
+
+    const categoryKey = post.category || "uncategorized"
+    if (!post.category) summary.uncategorized += 1
+    categoryCounts[categoryKey] = (categoryCounts[categoryKey] || 0) + 1
+  }
+
+  return {
+    ...summary,
+    topCategories: Object.entries(categoryCounts)
+      .sort((left, right) => right[1] - left[1])
+      .slice(0, 4)
+      .map(([category, count]) => ({ category, count })),
+  }
+}
+
 /**
  * GET /api/admin/blog — List blog posts with filters and pagination
  */
@@ -33,7 +151,7 @@ export async function GET(request: NextRequest) {
       ]
     }
 
-    const [posts, total] = await Promise.all([
+    const [posts, total, statusRows] = await Promise.all([
       prisma.blogPost.findMany({
         where,
         include: {
@@ -41,6 +159,7 @@ export async function GET(request: NextRequest) {
             ? { where: { language } }
             : { where: { language: "en" }, take: 1 },
           author: { select: { name: true, email: true } },
+          calculator: { select: { slug: true, translations: { where: { language: 'en' }, select: { title: true } } } },
           _count: { select: { translations: true } },
         },
         orderBy: { updatedAt: "desc" },
@@ -48,13 +167,21 @@ export async function GET(request: NextRequest) {
         take: limit,
       }),
       prisma.blogPost.count({ where }),
+      prisma.blogPost.findMany({
+        where,
+        select: { status: true, category: true },
+      }),
     ])
+
+    const summary = buildBlogSummary(statusRows, total)
 
     return NextResponse.json({
       posts: posts.map((p) => ({
         id: p.id,
         slug: p.slug,
         category: p.category,
+        subcategory: p.subcategory,
+        linkedToolName: p.calculator?.translations?.[0]?.title || p.calculator?.slug || null,
         status: p.status,
         featuredImage: p.featuredImage,
         tags: p.tags,
@@ -66,6 +193,7 @@ export async function GET(request: NextRequest) {
         createdAt: p.createdAt.toISOString(),
         updatedAt: p.updatedAt.toISOString(),
       })),
+      summary,
       total,
       page,
       totalPages: Math.ceil(total / limit),
@@ -88,10 +216,11 @@ export async function POST(request: NextRequest) {
     if (!guard.ok) return guard.response
     const session = guard.session
 
-    const body = await request.json()
+    const body = await request.json() as BlogPayload
     const {
       slug,
       category,
+      subcategory,
       linkedCalculatorId,
       featuredImage,
       tags,
@@ -100,43 +229,74 @@ export async function POST(request: NextRequest) {
       translations,
     } = body
 
-    if (!slug) {
+    const requestedSlug = normalizeSlug(slug)
+
+    if (!requestedSlug) {
       return NextResponse.json(
         { error: "Slug is required" },
         { status: 400 }
       )
     }
 
-    // Check for duplicate slug
-    const existing = await prisma.blogPost.findUnique({ where: { slug } })
-    if (existing) {
+    const finalSlug = await generateUniqueBlogSlug(requestedSlug)
+
+    const validTranslations = []
+    const reservedTranslationSlugs = new Set<string>()
+    for (const translation of translations || []) {
+      if (!translation?.title?.trim()) continue
+
+      validTranslations.push({
+        ...translation,
+        title: translation.title.trim(),
+        content: translation.content || "",
+        metaTitle: translation.metaTitle || "",
+        metaDesc: translation.metaDesc || "",
+        urlSlug: await generateUniqueTranslationSlug(
+          translation.urlSlug?.trim() || `${translation.language}-${finalSlug}`,
+          reservedTranslationSlugs
+        ),
+        wordCount: translation.wordCount || 0,
+        isPublished: translation.isPublished || false,
+      })
+    }
+
+    if (validTranslations.length === 0) {
       return NextResponse.json(
-        { error: "A blog post with this slug already exists" },
-        { status: 409 }
+        { error: "At least one language version with a title is required." },
+        { status: 400 }
+      )
+    }
+
+    const resolvedCalculatorId = await resolveLinkedCalculatorId(linkedCalculatorId)
+    if (linkedCalculatorId && !resolvedCalculatorId) {
+      return NextResponse.json(
+        { error: "Linked calculator not found. Choose a valid calculator." },
+        { status: 400 }
       )
     }
 
     const blogPost = await prisma.blogPost.create({
       data: {
-        slug,
+        slug: finalSlug,
         category: category || null,
-        linkedCalculatorId: linkedCalculatorId || null,
+        subcategory: subcategory || null,
+        linkedCalculatorId: resolvedCalculatorId,
         featuredImage: featuredImage || null,
         tags: tags || [],
         status: status || "DRAFT",
         scheduledAt: scheduledAt ? new Date(scheduledAt) : null,
         authorId: session.user.id,
         translations: {
-          create: (translations || []).map((t: any) => ({
+          create: validTranslations.map((t) => ({
             language: t.language,
-            title: t.title || "",
-            content: t.content || "",
-            metaTitle: t.metaTitle || "",
-            metaDesc: t.metaDesc || "",
-            urlSlug: t.urlSlug || `${t.language}-${slug}`,
-            isPublished: t.isPublished || false,
+            title: t.title,
+            content: t.content,
+            metaTitle: t.metaTitle,
+            metaDesc: t.metaDesc,
+            urlSlug: t.urlSlug,
+            isPublished: t.isPublished,
             publishedAt: t.isPublished ? new Date() : null,
-            wordCount: t.wordCount || 0,
+            wordCount: t.wordCount,
           })),
         },
       },
@@ -152,11 +312,18 @@ export async function POST(request: NextRequest) {
         action: "blog_created",
         entityType: "BlogPost",
         entityId: blogPost.id,
-        details: JSON.stringify({ slug, status: status || "DRAFT" }),
+        details: JSON.stringify({ slug: finalSlug, status: status || "DRAFT" }),
       },
     })
 
-    return NextResponse.json(blogPost, { status: 201 })
+    return NextResponse.json(
+      {
+        ...blogPost,
+        requestedSlug,
+        slugAdjusted: requestedSlug !== finalSlug,
+      },
+      { status: 201 }
+    )
   } catch (error) {
     console.error("Blog create error:", error)
     return NextResponse.json(
