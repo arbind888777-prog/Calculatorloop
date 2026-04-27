@@ -119,7 +119,7 @@ export async function sendPasswordResetEmail(to: string, resetLink: string) {
 function generatePasswordResetEmailHTML(resetLink: string): string {
   const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://calculatorloop.com';
 
-  return \`
+  return `
     <!DOCTYPE html>
     <html>
       <head>
@@ -169,7 +169,7 @@ function generatePasswordResetEmailHTML(resetLink: string): string {
         </div>
       </body>
     </html>
-  \`;
+  `;
 }
 
 /**

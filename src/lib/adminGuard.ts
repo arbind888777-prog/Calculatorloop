@@ -20,7 +20,16 @@ const ALLOWED: Record<MinRole, string[]> = {
   superadmin: ["SUPER_ADMIN"],
 }
 
-type GuardSuccess = { ok: true; session: NonNullable<Awaited<ReturnType<typeof getServerSession>>>; response?: never }
+type SessionUser = {
+  id: string
+  role?: string
+  name?: string | null
+  email?: string | null
+}
+type AdminSession = Omit<NonNullable<Awaited<ReturnType<typeof getServerSession>>>, "user"> & {
+  user: SessionUser
+}
+type GuardSuccess = { ok: true; session: AdminSession; response?: never }
 type GuardFail = { ok: false; response: NextResponse; session?: never }
 type GuardResult = GuardSuccess | GuardFail
 
@@ -46,5 +55,5 @@ export async function requireAdmin(minRole: MinRole = "viewer"): Promise<GuardRe
     }
   }
 
-  return { ok: true, session }
+  return { ok: true, session: session as AdminSession }
 }
