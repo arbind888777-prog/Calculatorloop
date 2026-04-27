@@ -7,6 +7,29 @@ interface RateLimitStore {
   resetTime: number;
 }
 
+type HeaderSource = Headers | Record<string, string | string[] | undefined>
+
+type RequestLike = {
+  headers?: HeaderSource
+} | Request
+
+function readHeader(headers: HeaderSource | undefined, name: string): string | undefined {
+  if (!headers) return undefined
+
+  if (typeof (headers as Headers).get === 'function') {
+    return (headers as Headers).get(name) ?? undefined
+  }
+
+  const normalizedName = name.toLowerCase()
+  const value = (headers as Record<string, string | string[] | undefined>)[normalizedName]
+
+  if (Array.isArray(value)) {
+    return value[0]
+  }
+
+  return value
+}
+
 // In-memory store (use Redis in production)
 const rateLimitStore = new Map<string, RateLimitStore>();
 
@@ -68,12 +91,12 @@ export function checkRateLimit(
 /**
  * Get client identifier from request
  */
-export function getClientIdentifier(request: Request): string {
+export function getClientIdentifier(request: RequestLike): string {
   // Try to get real IP from headers
   const headers = request.headers;
-  const forwardedFor = headers.get('x-forwarded-for');
-  const realIp = headers.get('x-real-ip');
-  const cfConnectingIp = headers.get('cf-connecting-ip');
+  const forwardedFor = readHeader(headers, 'x-forwarded-for');
+  const realIp = readHeader(headers, 'x-real-ip');
+  const cfConnectingIp = readHeader(headers, 'cf-connecting-ip');
 
   // Use the first available IP
   const ip = cfConnectingIp || realIp || forwardedFor?.split(',')[0] || 'unknown';

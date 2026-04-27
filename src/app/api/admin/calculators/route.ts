@@ -1,11 +1,15 @@
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
+import { requireAdmin } from "@/lib/adminGuard"
 
 /**
  * GET /api/admin/calculators — List calculators with pagination + filters
  */
 export async function GET(request: NextRequest) {
   try {
+    const guard = await requireAdmin("viewer")
+    if (!guard.ok) return guard.response
+
     const { searchParams } = new URL(request.url)
     const page = parseInt(searchParams.get("page") || "1")
     const limit = parseInt(searchParams.get("limit") || "20")

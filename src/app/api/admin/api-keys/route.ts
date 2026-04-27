@@ -1,12 +1,16 @@
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import crypto from "crypto"
+import { requireAdmin } from "@/lib/adminGuard"
 
 /**
  * GET /api/admin/api-keys — List all admin API keys
  */
 export async function GET() {
   try {
+    const guard = await requireAdmin("superadmin")
+    if (!guard.ok) return guard.response
+
     const keys = await prisma.adminApiKey.findMany({
       orderBy: { createdAt: "desc" },
     })
@@ -32,6 +36,9 @@ export async function GET() {
  */
 export async function POST(request: NextRequest) {
   try {
+    const guard = await requireAdmin("superadmin")
+    if (!guard.ok) return guard.response
+
     const body = await request.json()
     const { clientName, plan } = body
 

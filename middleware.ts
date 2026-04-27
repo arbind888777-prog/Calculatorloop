@@ -3,6 +3,14 @@ import { NextResponse } from 'next/server'
 import { getToken } from 'next-auth/jwt'
 import { proxy } from './src/proxy'
 
+function hasAdminPageAccess(role?: string) {
+  return role === 'SUPER_ADMIN' || role === 'EDITOR' || role === 'VIEWER'
+}
+
+function hasAdminApiAccess(role?: string) {
+  return role === 'SUPER_ADMIN' || role === 'EDITOR' || role === 'VIEWER'
+}
+
 export default async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
 
@@ -22,8 +30,7 @@ export default async function middleware(request: NextRequest) {
 
     // Authenticated but not an admin role → redirect to home
     const role = token.role as string | undefined
-    const hasAccess =
-      role === 'SUPER_ADMIN' || role === 'EDITOR' || role === 'VIEWER'
+    const hasAccess = hasAdminPageAccess(role)
     if (!hasAccess) {
       return NextResponse.redirect(new URL('/', request.url))
     }
@@ -41,8 +48,7 @@ export default async function middleware(request: NextRequest) {
     }
 
     const role = token.role as string | undefined
-    const hasAccess =
-      role === 'SUPER_ADMIN' || role === 'EDITOR' || role === 'VIEWER'
+    const hasAccess = hasAdminApiAccess(role)
     if (!hasAccess) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
@@ -60,6 +66,14 @@ export default async function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
+    /*
+     * Match all request paths EXCEPT:
+     * - _next/static (static files)
+     * - _next/image (image optimization)
+     * - favicon.ico
+     * - api/auth (NextAuth routes — must NEVER be intercepted by middleware)
+     * - public assets (svg, png, jpg, etc.)
+     */
+    '/((?!_next/static|_next/image|favicon.ico|api/auth|.*\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
   ],
 }

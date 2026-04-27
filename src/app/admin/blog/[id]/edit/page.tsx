@@ -37,6 +37,7 @@ export default async function EditBlogPage({ params }: Props) {
   const initialData = {
     slug: blogPost.slug,
     category: blogPost.category || "",
+    subcategory: blogPost.subcategory || "",
     status: blogPost.status,
     tags: blogPost.tags,
     linkedCalculatorId: blogPost.linkedCalculatorId || "",

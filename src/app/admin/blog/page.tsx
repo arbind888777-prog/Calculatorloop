@@ -12,6 +12,8 @@ interface BlogListItem {
   id: string
   slug: string
   category: string | null
+  subcategory: string | null
+  linkedToolName: string | null
   status: string
   title: string
   language: string
@@ -20,6 +22,16 @@ interface BlogListItem {
   authorName: string
   createdAt: string
   updatedAt: string
+}
+
+interface BlogSummary {
+  total: number
+  published: number
+  drafts: number
+  review: number
+  scheduled: number
+  uncategorized: number
+  topCategories: Array<{ category: string; count: number }>
 }
 
 const statusColors: Record<string, "green" | "yellow" | "blue" | "gray" | "red"> = {
@@ -31,6 +43,15 @@ const statusColors: Record<string, "green" | "yellow" | "blue" | "gray" | "red">
 
 export default function BlogListPage() {
   const [posts, setPosts] = useState<BlogListItem[]>([])
+  const [summary, setSummary] = useState<BlogSummary>({
+    total: 0,
+    published: 0,
+    drafts: 0,
+    review: 0,
+    scheduled: 0,
+    uncategorized: 0,
+    topCategories: [],
+  })
   const [loading, setLoading] = useState(true)
   const [page, setPage] = useState(1)
   const [totalPages, setTotalPages] = useState(1)
@@ -53,6 +74,15 @@ export default function BlogListPage() {
       const res = await fetch(`/api/admin/blog?${params}`)
       const data = await res.json()
       setPosts(data.posts || [])
+      setSummary(data.summary || {
+        total: 0,
+        published: 0,
+        drafts: 0,
+        review: 0,
+        scheduled: 0,
+        uncategorized: 0,
+        topCategories: [],
+      })
       setTotalPages(data.totalPages || 1)
       setTotal(data.total || 0)
     } catch {
@@ -100,18 +130,11 @@ export default function BlogListPage() {
   }
 
   return (
-    <div>
+    <div className="space-y-6">
       {/* Header */}
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          marginBottom: "20px",
-        }}
-      >
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <p style={{ margin: 0, fontSize: "13px", color: "#5a7090" }}>
+          <p className="text-sm text-slate-400 m-0">
             {total} total blog posts
           </p>
         </div>
@@ -123,36 +146,50 @@ export default function BlogListPage() {
       </div>
 
       {/* Filters */}
-      <div
-        style={{
-          display: "flex",
-          gap: "12px",
-          marginBottom: "16px",
-          flexWrap: "wrap",
-          alignItems: "flex-end",
-        }}
-      >
-        <div style={{ flex: 1, minWidth: "200px" }}>
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-4">
+        {[
+          { label: "Published", value: summary.published, textClass: "text-green-500" },
+          { label: "Drafts", value: summary.drafts, textClass: "text-slate-400" },
+          { label: "In Review", value: summary.review, textClass: "text-yellow-400" },
+          { label: "Scheduled", value: summary.scheduled, textClass: "text-blue-400" },
+        ].map((item) => (
+          <div
+            key={item.label}
+            className="bg-slate-900 border border-slate-800 rounded-xl p-4 flex flex-col justify-center shadow-sm"
+          >
+            <div className="text-2xl font-bold text-slate-200">{item.value}</div>
+            <div className={`text-xs font-medium mt-1 ${item.textClass}`}>{item.label}</div>
+          </div>
+        ))}
+      </div>
+
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-4 bg-blue-500/5 border border-blue-500/10 rounded-xl">
+        <div>
+          <div className="text-xs font-semibold text-blue-400 mb-1">Blog command center</div>
+          <div className="text-xs text-slate-400 max-w-xl">
+            Manage drafts, publish multilingual posts, link calculators, and track top categories from one place.
+          </div>
+        </div>
+        <div className="flex gap-2 flex-wrap">
+          {summary.topCategories.map((item) => (
+            <Badge key={item.category} color="blue">
+              {item.category === "uncategorized" ? "Uncategorized" : item.category}: {item.count}
+            </Badge>
+          ))}
+        </div>
+      </div>
+
+      <div className="flex flex-col md:flex-row gap-3 items-stretch md:items-end">
+        <div className="flex-1 w-full lg:min-w-[200px]">
           <input
             type="text"
             placeholder="Search by title or slug..."
             value={search}
             onChange={(e) => { setSearch(e.target.value); setPage(1) }}
-            style={{
-              width: "100%",
-              padding: "10px 14px",
-              background: "#0f1623",
-              border: "1px solid #1c2a3d",
-              borderRadius: "8px",
-              color: "#e2e8f0",
-              fontSize: "13px",
-              outline: "none",
-              fontFamily: "inherit",
-              boxSizing: "border-box",
-            }}
+            className="w-full px-4 py-2.5 bg-[#0f1623] border border-slate-800 rounded-lg text-slate-200 text-sm focus:outline-none focus:border-blue-500 transition-all placeholder:text-slate-500 font-inherit"
           />
         </div>
-        <div style={{ width: "150px" }}>
+        <div className="w-full md:w-36 shrink-0">
           <AdminSelect
             options={[
               { value: "", label: "All Status" },
@@ -163,9 +200,10 @@ export default function BlogListPage() {
             ]}
             value={statusFilter}
             onChange={(e) => { setStatusFilter(e.target.value); setPage(1) }}
+            style={{ marginBottom: 0 }}
           />
         </div>
-        <div style={{ width: "150px" }}>
+        <div className="w-full md:w-40 shrink-0">
           <AdminSelect
             options={[
               { value: "", label: "All Categories" },
@@ -175,28 +213,21 @@ export default function BlogListPage() {
               { value: "science", label: "Science" },
               { value: "technology", label: "Technology" },
               { value: "education", label: "Education" },
+              { value: "business", label: "Business" },
+              { value: "construction", label: "Construction" },
+              { value: "everyday", label: "Everyday" },
             ]}
             value={categoryFilter}
             onChange={(e) => { setCategoryFilter(e.target.value); setPage(1) }}
+            style={{ marginBottom: 0 }}
           />
         </div>
       </div>
 
       {/* Bulk Actions */}
       {selected.size > 0 && (
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: "10px",
-            padding: "10px 16px",
-            background: "rgba(59,130,246,0.08)",
-            borderRadius: "8px",
-            marginBottom: "12px",
-            border: "1px solid rgba(59,130,246,0.15)",
-          }}
-        >
-          <span style={{ fontSize: "12px", color: "#60a5fa", fontWeight: 500 }}>
+        <div className="flex items-center gap-3 px-4 py-3 bg-blue-500/10 border border-blue-500/20 rounded-lg">
+          <span className="text-xs text-blue-400 font-medium">
             {selected.size} selected
           </span>
           <AdminButton variant="danger" size="sm" onClick={handleBulkDelete}>
@@ -213,31 +244,32 @@ export default function BlogListPage() {
         {loading ? (
           <PageLoader message="Loading blog posts..." />
         ) : (
-          <div style={{ overflowX: "auto" }}>
-            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "13px" }}>
+          <div className="w-full overflow-x-auto">
+            <table className="w-full border-collapse text-[13px] text-left">
               <thead>
-                <tr>
-                  <th style={thStyle}>
+                <tr className="border-b border-slate-800 text-slate-400 uppercase tracking-wide text-[11px] font-semibold bg-slate-900/50">
+                  <th className="px-4 py-3 whitespace-nowrap">
                     <input
                       type="checkbox"
                       checked={selected.size === posts.length && posts.length > 0}
                       onChange={toggleAll}
-                      style={{ accentColor: "#3b82f6" }}
+                      className="accent-blue-500"
                     />
                   </th>
-                  <th style={thStyle}>Title</th>
-                  <th style={thStyle}>Category</th>
-                  <th style={thStyle}>Status</th>
-                  <th style={thStyle}>Languages</th>
-                  <th style={thStyle}>Views</th>
-                  <th style={thStyle}>Updated</th>
-                  <th style={thStyle}>Actions</th>
+                  <th className="px-4 py-3 whitespace-nowrap">Title</th>
+                  <th className="px-4 py-3 whitespace-nowrap">Category / Subcategory</th>
+                  <th className="px-4 py-3 whitespace-nowrap">Linked Tool</th>
+                  <th className="px-4 py-3 whitespace-nowrap">Status</th>
+                  <th className="px-4 py-3 whitespace-nowrap">Languages</th>
+                  <th className="px-4 py-3 whitespace-nowrap">Views</th>
+                  <th className="px-4 py-3 whitespace-nowrap">Updated</th>
+                  <th className="px-4 py-3 whitespace-nowrap">Actions</th>
                 </tr>
               </thead>
-              <tbody>
+              <tbody className="divide-y divide-slate-800/40">
                 {posts.length === 0 ? (
                   <tr>
-                    <td colSpan={8} style={{ textAlign: "center", padding: "40px", color: "#5a7090" }}>
+                    <td colSpan={8} className="text-center py-10 text-slate-400">
                       No blog posts found. Create your first one!
                     </td>
                   </tr>
@@ -245,64 +277,67 @@ export default function BlogListPage() {
                   posts.map((post) => (
                     <tr
                       key={post.id}
-                      style={{ borderBottom: "1px solid rgba(28,42,61,0.4)" }}
-                      onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(59,130,246,0.03)" }}
-                      onMouseLeave={(e) => { e.currentTarget.style.background = "transparent" }}
+                      className="hover:bg-blue-500/5 transition-colors group"
                     >
-                      <td style={tdStyle}>
+                      <td className="px-4 py-3 whitespace-nowrap">
                         <input
                           type="checkbox"
                           checked={selected.has(post.id)}
                           onChange={() => toggleSelect(post.id)}
-                          style={{ accentColor: "#3b82f6" }}
+                          className="accent-blue-500"
                         />
                       </td>
-                      <td style={{ ...tdStyle, maxWidth: "250px" }}>
+                      <td className="px-4 py-3 whitespace-nowrap max-w-[200px] sm:max-w-[250px] overflow-hidden">
                         <Link
                           href={`/admin/blog/${post.id}/edit`}
-                          style={{
-                            color: "#e2e8f0",
-                            textDecoration: "none",
-                            fontWeight: 500,
-                            display: "block",
-                            overflow: "hidden",
-                            textOverflow: "ellipsis",
-                            whiteSpace: "nowrap",
-                          }}
+                          className="text-slate-200 font-medium block truncate hover:text-blue-400 transition-colors"
                         >
                           {post.title}
                         </Link>
-                        <span style={{ fontSize: "11px", color: "#5a7090" }}>/{post.slug}</span>
+                        <span className="text-[11px] text-slate-500 truncate block">/{post.slug}</span>
                       </td>
-                      <td style={tdStyle}>
-                        {post.category ? (
-                          <Badge color="blue">{post.category}</Badge>
+                      <td className="px-4 py-3 whitespace-nowrap">
+                        <div className="flex flex-col gap-1">
+                          {post.category ? (
+                            <Badge color="blue">{post.category}</Badge>
+                          ) : (
+                            <span className="text-slate-500">—</span>
+                          )}
+                          {post.subcategory ? (
+                            <span className="text-[11px] text-slate-400">↳ {post.subcategory}</span>
+                          ) : null}
+                        </div>
+                      </td>
+                      <td className="px-4 py-3 whitespace-nowrap">
+                        {post.linkedToolName ? (
+                          <Badge color="purple" dot>{post.linkedToolName}</Badge>
                         ) : (
-                          <span style={{ color: "#5a7090" }}>—</span>
+                          <span className="text-slate-500">—</span>
                         )}
                       </td>
-                      <td style={tdStyle}>
+                      <td className="px-4 py-3 whitespace-nowrap">
                         <Badge color={statusColors[post.status] || "gray"} dot>
                           {post.status}
                         </Badge>
                       </td>
-                      <td style={tdStyle}>
-                        <span style={{ color: "#94a3b8" }}>{post.translationCount} lang(s)</span>
+                      <td className="px-4 py-3 whitespace-nowrap">
+                        <div className="flex items-center gap-2">
+                          <span className="text-slate-400">{post.translationCount} lang(s)</span>
+                          <Badge color="purple">{post.language.toUpperCase()}</Badge>
+                        </div>
                       </td>
-                      <td style={tdStyle}>
-                        <span style={{ color: "#94a3b8" }}>{post.viewCount.toLocaleString()}</span>
+                      <td className="px-4 py-3 whitespace-nowrap">
+                        <span className="text-slate-400 font-medium">{post.viewCount.toLocaleString()}</span>
                       </td>
-                      <td style={tdStyle}>
-                        <span style={{ color: "#5a7090", fontSize: "12px" }}>
+                      <td className="px-4 py-3 whitespace-nowrap">
+                        <span className="text-slate-400 text-xs">
                           {formatDate(post.updatedAt)}
                         </span>
                       </td>
-                      <td style={tdStyle}>
-                        <div style={{ display: "flex", gap: "6px" }}>
-                          <Link href={`/admin/blog/${post.id}/edit`}>
-                            <AdminButton variant="ghost" size="sm">Edit</AdminButton>
-                          </Link>
-                        </div>
+                      <td className="px-4 py-3 whitespace-nowrap">
+                        <Link href={`/admin/blog/${post.id}/edit`}>
+                          <AdminButton variant="ghost" size="sm">Edit</AdminButton>
+                        </Link>
                       </td>
                     </tr>
                   ))
@@ -315,15 +350,7 @@ export default function BlogListPage() {
 
       {/* Pagination */}
       {totalPages > 1 && (
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            gap: "8px",
-            marginTop: "20px",
-          }}
-        >
+        <div className="flex items-center justify-center gap-3 mt-6">
           <AdminButton
             variant="outline"
             size="sm"
@@ -332,7 +359,7 @@ export default function BlogListPage() {
           >
             Previous
           </AdminButton>
-          <span style={{ fontSize: "12px", color: "#5a7090" }}>
+          <span className="text-xs text-slate-400 font-medium">
             Page {page} of {totalPages}
           </span>
           <AdminButton
@@ -347,21 +374,4 @@ export default function BlogListPage() {
       )}
     </div>
   )
-}
-
-const thStyle: React.CSSProperties = {
-  textAlign: "left",
-  padding: "10px 14px",
-  color: "#5a7090",
-  fontWeight: 600,
-  fontSize: "11px",
-  textTransform: "uppercase",
-  letterSpacing: "0.5px",
-  borderBottom: "1px solid #1c2a3d",
-  whiteSpace: "nowrap",
-}
-
-const tdStyle: React.CSSProperties = {
-  padding: "12px 14px",
-  whiteSpace: "nowrap",
 }

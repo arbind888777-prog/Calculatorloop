@@ -4,7 +4,6 @@ import { useState, useEffect, useMemo, useRef } from "react"
 import { useRouter } from "next/navigation"
 import { Search, X, ArrowRight, Calculator, TrendingUp } from "lucide-react"
 import { toolsData } from "@/lib/toolsData"
-import { implementedCalculatorIds } from "@/lib/implementedCalculators"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import { VoiceInput } from "@/components/ui/voice-input"
@@ -52,7 +51,6 @@ export function SearchModal({ isOpen, onClose }: SearchModalProps) {
     return Object.entries(toolsData).flatMap(([categoryKey, categoryData]) =>
       Object.values(categoryData.subcategories).flatMap((subcategory) =>
         subcategory.calculators
-          .filter((tool) => implementedCalculatorIds.has(tool.id))
           .map((tool) => {
           const meta = localizeToolMeta({
             dict,

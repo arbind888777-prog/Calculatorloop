@@ -1,8 +1,12 @@
 import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
+import { requireAdmin } from "@/lib/adminGuard"
 
 export async function GET() {
   try {
+    const guard = await requireAdmin("viewer")
+    if (!guard.ok) return guard.response
+
     const activities = await prisma.activityLog.findMany({
       take: 10,
       orderBy: { createdAt: "desc" },

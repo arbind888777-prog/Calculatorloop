@@ -1,9 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -13,35 +7,6 @@ datasource db {
   url       = env("DATABASE_URL")
   directUrl = env("DIRECT_URL")
 }
-
-// ============================================================
-// ENUMS
-// ============================================================
-
-enum UserRole {
-  SUPER_ADMIN
-  EDITOR
-  VIEWER
-  USER
-}
-
-enum BlogStatus {
-  DRAFT
-  REVIEW
-  PUBLISHED
-  SCHEDULED
-}
-
-enum ApiPlan {
-  FREE
-  STARTER
-  PRO
-  ENTERPRISE
-}
-
-// ============================================================
-// EXISTING MODELS (preserved from original schema)
-// ============================================================
 
 model TopUpLoanCalculation {
   id           Int      @id @default(autoincrement())
@@ -66,8 +31,7 @@ model Account {
   scope             String?
   id_token          String?
   session_state     String?
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([provider, providerAccountId])
 }
@@ -81,52 +45,45 @@ model Session {
 }
 
 model User {
-  id            String    @id @default(cuid())
-  name          String?
-  email         String?   @unique
-  emailVerified DateTime?
-  image         String?
-  password      String?
-  role          UserRole  @default(USER)
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-
-  // Profile Details
-  occupation        String?
-  purpose           String?
-  age               Int?
-  phone             String?
-  city              String?
-  state             String?
-  country           String?
-  education         String?
-  organization      String?
-  experienceYears   Int?
-  goals             String?
-  preferredLanguage String?
-
-  // Consent / Preferences
-  personalizationOptIn    Boolean @default(false)
-  adsPersonalizationOptIn Boolean @default(false)
-
-  // Analytics
-  totalCalculations  Int      @default(0)
-  totalSearches      Int      @default(0)
-  themeChanges       Int      @default(0)
-  lastVisit          DateTime @default(now())
-  favoriteCategory   String?
-  mostUsedCalculator String?
-
-  accounts          Account[]
-  sessions          Session[]
-  calculations      Calculation[]
-  favorites         Favorite[]
-  savedResults      SavedResult[]
-  apiKeys           ApiKey[]
-  pushSubscriptions PushSubscription[]
-  notifications     Notification[]
-  blogPosts         BlogPost[]
-  activityLogs      ActivityLog[]
+  id                      String             @id @default(cuid())
+  name                    String?
+  email                   String?            @unique
+  emailVerified           DateTime?
+  image                   String?
+  password                String?
+  createdAt               DateTime           @default(now())
+  updatedAt               DateTime           @updatedAt
+  occupation              String?
+  purpose                 String?
+  age                     Int?
+  phone                   String?
+  city                    String?
+  state                   String?
+  country                 String?
+  education               String?
+  organization            String?
+  experienceYears         Int?
+  goals                   String?
+  preferredLanguage       String?
+  personalizationOptIn    Boolean            @default(false)
+  adsPersonalizationOptIn Boolean            @default(false)
+  totalCalculations       Int                @default(0)
+  totalSearches           Int                @default(0)
+  themeChanges            Int                @default(0)
+  lastVisit               DateTime           @default(now())
+  favoriteCategory        String?
+  mostUsedCalculator      String?
+  role                    UserRole           @default(USER)
+  accounts                Account[]
+  activityLogs            ActivityLog[]
+  apiKeys                 ApiKey[]
+  blogPosts               BlogPost[]
+  calculations            Calculation[]
+  favorites               Favorite[]
+  notifications           Notification[]
+  pushSubscriptions       PushSubscription[]
+  savedResults            SavedResult[]
+  sessions                Session[]
 }
 
 model Notification {
@@ -137,8 +94,7 @@ model Notification {
   url       String?
   readAt    DateTime?
   createdAt DateTime  @default(now())
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, createdAt])
   @@index([userId, readAt])
@@ -153,8 +109,7 @@ model Calculation {
   inputs         String
   result         String
   createdAt      DateTime @default(now())
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, createdAt])
   @@index([calculatorType])
@@ -170,8 +125,7 @@ model Favorite {
   usageCount     Int       @default(0)
   lastUsed       DateTime?
   addedAt        DateTime  @default(now())
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, calculatorId])
   @@index([userId])
@@ -187,8 +141,7 @@ model SavedResult {
   notes          String?
   tags           String?
   savedAt        DateTime @default(now())
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, savedAt])
   @@index([calculatorType])
@@ -213,18 +166,17 @@ model Newsletter {
 }
 
 model ApiKey {
-  id         String    @id @default(cuid())
+  id         String     @id @default(cuid())
   userId     String
   name       String
-  key        String    @unique
-  tier       String    @default("FREE")
-  isActive   Boolean   @default(true)
+  key        String     @unique
+  tier       String     @default("FREE")
+  isActive   Boolean    @default(true)
   lastUsedAt DateTime?
-  createdAt  DateTime  @default(now())
+  createdAt  DateTime   @default(now())
   expiresAt  DateTime?
-
-  user  User       @relation(fields: [userId], references: [id], onDelete: Cascade)
-  usage ApiUsage[]
+  user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  usage      ApiUsage[]
 
   @@index([userId])
   @@index([key])
@@ -239,8 +191,7 @@ model ApiUsage {
   timestamp  DateTime @default(now())
   ipAddress  String?
   userAgent  String?
-
-  apiKey ApiKey @relation(fields: [apiKeyId], references: [id], onDelete: Cascade)
+  apiKey     ApiKey   @relation(fields: [apiKeyId], references: [id], onDelete: Cascade)
 
   @@index([apiKeyId, timestamp])
   @@index([timestamp])
@@ -254,8 +205,7 @@ model PushSubscription {
   userId    String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-
-  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+  user      User?    @relation(fields: [userId], references: [id])
 
   @@index([userId])
 }
@@ -271,40 +221,34 @@ model NotificationEvent {
   createdAt  DateTime @default(now())
 }
 
-// ============================================================
-// NEW MODELS — Admin Panel
-// ============================================================
-
 model Category {
-  id              String   @id @default(cuid())
+  id              String       @id @default(cuid())
   name            String
-  slug            String   @unique
+  slug            String       @unique
   icon            String?
   description     String?
-  calculatorCount Int      @default(0)
-  sortOrder       Int      @default(0)
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-
-  calculators Calculator[]
+  calculatorCount Int          @default(0)
+  sortOrder       Int          @default(0)
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+  calculators     Calculator[]
 
   @@index([slug])
 }
 
 model Calculator {
-  id          String   @id @default(cuid())
-  slug        String   @unique
-  categoryId  String?
-  subcategory String?
-  totalUses   Int      @default(0)
-  isActive    Boolean  @default(true)
-  isFeatured  Boolean  @default(false)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  category     Category?               @relation(fields: [categoryId], references: [id], onDelete: SetNull)
-  translations CalculatorTranslation[]
+  id           String                  @id @default(cuid())
+  slug         String                  @unique
+  categoryId   String?
+  subcategory  String?
+  totalUses    Int                     @default(0)
+  isActive     Boolean                 @default(true)
+  isFeatured   Boolean                 @default(false)
+  createdAt    DateTime                @default(now())
+  updatedAt    DateTime                @updatedAt
   blogPosts    BlogPost[]
+  category     Category?               @relation(fields: [categoryId], references: [id])
+  translations CalculatorTranslation[]
 
   @@index([slug])
   @@index([categoryId])
@@ -312,16 +256,15 @@ model Calculator {
 }
 
 model CalculatorTranslation {
-  id           String  @id @default(cuid())
+  id           String     @id @default(cuid())
   calculatorId String
-  language     String  // en, hi, es, bn, ta, te, mr
+  language     String
   title        String
   description  String?
   metaTitle    String?
   metaDesc     String?
-  isPublished  Boolean @default(false)
-
-  calculator Calculator @relation(fields: [calculatorId], references: [id], onDelete: Cascade)
+  isPublished  Boolean    @default(false)
+  calculator   Calculator @relation(fields: [calculatorId], references: [id], onDelete: Cascade)
 
   @@unique([calculatorId, language])
   @@index([calculatorId])
@@ -329,22 +272,22 @@ model CalculatorTranslation {
 }
 
 model BlogPost {
-  id                   String     @id @default(cuid())
-  slug                 String     @unique
-  category             String?
-  linkedCalculatorId   String?
-  featuredImage        String?
-  tags                 String[]   @default([])
-  authorId             String?
-  status               BlogStatus @default(DRAFT)
-  scheduledAt          DateTime?
-  viewCount            Int        @default(0)
-  createdAt            DateTime   @default(now())
-  updatedAt            DateTime   @updatedAt
-
-  author       User?                @relation(fields: [authorId], references: [id], onDelete: SetNull)
-  calculator   Calculator?          @relation(fields: [linkedCalculatorId], references: [id], onDelete: SetNull)
-  translations BlogPostTranslation[]
+  id                 String                @id @default(cuid())
+  slug               String                @unique
+  category           String?
+  linkedCalculatorId String?
+  featuredImage      String?
+  tags               String[]              @default([])
+  authorId           String?
+  status             BlogStatus            @default(DRAFT)
+  scheduledAt        DateTime?
+  viewCount          Int                   @default(0)
+  createdAt          DateTime              @default(now())
+  updatedAt          DateTime              @updatedAt
+  subcategory        String?
+  author             User?                 @relation(fields: [authorId], references: [id])
+  calculator         Calculator?           @relation(fields: [linkedCalculatorId], references: [id])
+  translations       BlogPostTranslation[]
 
   @@index([slug])
   @@index([status])
@@ -356,17 +299,16 @@ model BlogPost {
 model BlogPostTranslation {
   id          String    @id @default(cuid())
   blogPostId  String
-  language    String    // en, hi, es, bn, ta, te, mr
+  language    String
   title       String
-  content     String    // HTML content from editor
+  content     String
   metaTitle   String?
   metaDesc    String?
   urlSlug     String    @unique
   isPublished Boolean   @default(false)
   publishedAt DateTime?
   wordCount   Int       @default(0)
-
-  blogPost BlogPost @relation(fields: [blogPostId], references: [id], onDelete: Cascade)
+  blogPost    BlogPost  @relation(fields: [blogPostId], references: [id], onDelete: Cascade)
 
   @@unique([blogPostId, language])
   @@index([blogPostId])
@@ -392,13 +334,12 @@ model AdminApiKey {
 model ActivityLog {
   id         String   @id @default(cuid())
   userId     String?
-  action     String   // e.g., "blog_published", "calculator_updated"
-  entityType String?  // e.g., "BlogPost", "Calculator"
+  action     String
+  entityType String?
   entityId   String?
-  details    String?  // JSON string with additional info
+  details    String?
   createdAt  DateTime @default(now())
-
-  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+  user       User?    @relation(fields: [userId], references: [id])
 
   @@index([userId])
   @@index([createdAt])
@@ -407,10 +348,10 @@ model ActivityLog {
 
 model Revenue {
   id        String   @id @default(cuid())
-  source    String   // "adsense", "api", "affiliate", "premium"
+  source    String
   amount    Float
   currency  String   @default("USD")
-  month     Int      // 1-12
+  month     Int
   year      Int
   notes     String?
   createdAt DateTime @default(now())
@@ -419,19 +360,36 @@ model Revenue {
   @@index([year, month])
 }
 
-// -----------------------------------------------------------------------------
-// SEO & keywords
-// -----------------------------------------------------------------------------
-
 model SEOKeyword {
-  id            String   @id @default(cuid())
-  keyword       String   @unique
-  targetUrl     String?  // /calculators/bmi-calculator
-  volume        Int      @default(0)
-  currentRank   Int?     
-  previousRank  Int?     
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  id           String   @id @default(cuid())
+  keyword      String   @unique
+  targetUrl    String?
+  volume       Int      @default(0)
+  currentRank  Int?
+  previousRank Int?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 
   @@index([keyword])
+}
+
+enum UserRole {
+  SUPER_ADMIN
+  EDITOR
+  VIEWER
+  USER
+}
+
+enum BlogStatus {
+  DRAFT
+  REVIEW
+  PUBLISHED
+  SCHEDULED
+}
+
+enum ApiPlan {
+  FREE
+  STARTER
+  PRO
+  ENTERPRISE
 }
