@@ -2,25 +2,22 @@ name: Deploy CalculatorLoop
 
 on:
   push:
-    branches: [ main ]
+    branches: [main]
 
 jobs:
-  build-and-deploy:
+  deploy:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout Code
-        uses: actions/checkout@v4
-
       - name: Deploy to VPS
         uses: appleboy/ssh-action@v1.0.3
         with:
-          host: ${{ secrets.VPS_IP }}
+          host: ${{ secrets.VPS_HOST }}
           username: ${{ secrets.VPS_USERNAME }}
-          key: ${{ secrets.SSH_PRIVATE_KEY }}
-          port: 22
+          password: ${{ secrets.VPS_PASSWORD }} # ya key use karo
+          port: ${{ secrets.VPS_PORT }}
           script: |
-            cd /var/www/Calculatorloop || exit
+            cd /var/www/Calculatorloop || exit 1
             git pull origin main
-            npm install
+            npm ci
             npm run build
             pm2 restart calculator-app || pm2 start npm --name "calculator-app" -- start
