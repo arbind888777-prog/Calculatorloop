@@ -125,7 +125,10 @@ export const authOptions: NextAuthOptions = {
       return normalizeAuthRedirectUrl(url, baseUrl)
     },
     session: ({ session, token }) => {
-      // Merge id and role into session.user
+      if (!token.id || token.sessionRevoked) {
+        return null as any
+      }
+
       return {
         ...session,
         user: {
@@ -138,13 +141,40 @@ export const authOptions: NextAuthOptions = {
     jwt: async ({ token, user }) => {
       if (user) {
         token.id = user.id
-        // Fetch the role from the database for accurate role assignment
-        const dbUser = await prisma.user.findUnique({
-          where: { id: user.id },
-          select: { role: true },
-        })
-        token.role = dbUser?.role || "USER"
       }
+
+      if (!token.id) {
+        return token
+      }
+
+      const dbUser = await prisma.user.findUnique({
+        where: { id: token.id },
+        select: {
+          role: true,
+          passwordChangedAt: true,
+        },
+      })
+
+      if (!dbUser) {
+        token.sessionRevoked = true
+        token.role = undefined
+        return token
+      }
+
+      const dbPasswordChangedAt = dbUser.passwordChangedAt?.getTime() ?? null
+      const tokenPasswordChangedAt =
+        typeof token.passwordChangedAt === "number" ? token.passwordChangedAt : null
+
+      if (tokenPasswordChangedAt !== null && dbPasswordChangedAt !== tokenPasswordChangedAt) {
+        token.sessionRevoked = true
+        token.role = dbUser.role || "USER"
+        return token
+      }
+
+      token.passwordChangedAt = dbPasswordChangedAt
+      token.sessionRevoked = false
+      token.role = dbUser.role || "USER"
+
       return token
     },
   },

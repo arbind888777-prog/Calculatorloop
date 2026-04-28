@@ -10,6 +10,7 @@ import {
 import { getClientIdentifier, withRateLimit } from "@/lib/security/rateLimit"
 import { sanitizeEmail } from "@/lib/security/sanitize"
 import { hashResetToken } from "@/lib/password"
+import { verifyTurnstileToken } from "@/lib/security/turnstile"
 
 const GENERIC_SUCCESS_MESSAGE =
   "If an account exists, a password reset link will be sent to your email."
@@ -28,15 +29,35 @@ export async function POST(req: Request) {
     }
 
     const email = sanitizeEmail(validation.data.email)
-    const rateLimit = withRateLimit(`${email}:${clientId}`, "passwordReset")
+    const turnstileCheck = await verifyTurnstileToken({
+      token: validation.data.turnstileToken,
+      remoteIp: clientId,
+      expectedAction: "forgot_password",
+    })
 
-    if (!rateLimit.success) {
+    if (!turnstileCheck.success) {
       return NextResponse.json(
-        { error: rateLimit.error },
+        { error: turnstileCheck.error },
+        { status: 400 }
+      )
+    }
+
+    const emailRateLimit = withRateLimit(email, "passwordResetEmail")
+    const ipRateLimit = withRateLimit(clientId, "passwordResetIp")
+    const blockedRateLimit =
+      !emailRateLimit.success
+        ? emailRateLimit
+        : !ipRateLimit.success
+          ? ipRateLimit
+          : null
+
+    if (blockedRateLimit) {
+      return NextResponse.json(
+        { error: blockedRateLimit.error },
         {
           status: 429,
           headers: {
-            "Retry-After": String(rateLimit.retryAfter),
+            "Retry-After": String(blockedRateLimit.retryAfter),
           },
         }
       )
@@ -87,11 +108,20 @@ export async function POST(req: Request) {
         userId: user.id,
         action: "auth.password_reset_requested",
         entityType: "auth",
-        details: JSON.stringify({ email }),
+        details: JSON.stringify({ email, clientId }),
       },
     }).catch(() => null)
 
-    return NextResponse.json({ message: GENERIC_SUCCESS_MESSAGE })
+    return NextResponse.json({
+      message: GENERIC_SUCCESS_MESSAGE,
+      ...(process.env.NODE_ENV !== "production" && emailResult.preview?.previewData
+        ? {
+          deliveryMode: emailResult.mode,
+          previewFilePath: emailResult.preview.filePath,
+          previewResetLink: emailResult.preview.previewData.resetLink,
+        }
+        : {}),
+    })
   } catch (error) {
     console.error("Forgot password error:", error)
     return NextResponse.json({ error: "Something went wrong" }, { status: 500 })

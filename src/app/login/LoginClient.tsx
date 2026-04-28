@@ -75,6 +75,7 @@ export default function LoginClient() {
       OAuthCreateAccount: 'Could not create account with Google. Please try again.',
       Callback: 'Sign-in failed. Please try again.',
       AccessDenied: 'Access denied. You do not have permission to sign in.',
+      SessionRevoked: 'Your session expired after a security change. Please sign in again.',
       default: 'Something went wrong during sign-in. Please try again.',
     }
     toast.error(errorMessages[error] || errorMessages.default)
@@ -147,20 +148,12 @@ export default function LoginClient() {
             <div>
               <div className="flex items-center justify-between">
                 <Label htmlFor="password">Password</Label>
-                <div className="flex items-center gap-3">
-                  <Link
-                    href={withLocale("/forgot-password")}
-                    className="text-sm font-medium text-primary hover:text-primary/90"
-                  >
-                    Forgot password?
-                  </Link>
-                  <Link
-                    href={withLocale("/account-recovery")}
-                    className="text-sm font-medium text-primary hover:text-primary/90"
-                  >
-                    Forgot email?
-                  </Link>
-                </div>
+                <Link
+                  href={withLocale("/forgot-password")}
+                  className="text-sm font-medium text-primary hover:text-primary/90"
+                >
+                  Forgot password?
+                </Link>
               </div>
               <div className="mt-1">
                 <Input
@@ -187,9 +180,15 @@ export default function LoginClient() {
             </div>
           </form>
 
-          <p className="mt-4 text-center text-xs text-muted-foreground">
-            If you forgot your login email, use account recovery so support can verify and help securely.
-          </p>
+          <div className="mt-4 space-y-1 text-center text-xs text-muted-foreground">
+            <p>We never send your current password by email. You get a one-time reset link to set a new password.</p>
+            <p>
+              Can&apos;t access or remember your login email?{" "}
+              <Link href={withLocale("/account-recovery")} className="font-medium text-primary hover:text-primary/90">
+                Recover account
+              </Link>
+            </p>
+          </div>
 
           <div className="mt-6">
             <div className="relative">

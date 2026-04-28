@@ -9,10 +9,14 @@ function LoginForm() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const callbackUrl = searchParams.get("callbackUrl") || "/admin"
+  const initialError =
+    searchParams.get("error") === "SessionRevoked"
+      ? "Your session expired after a security change. Please sign in again."
+      : ""
 
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
-  const [error, setError] = useState("")
+  const [error, setError] = useState(initialError)
   const [loading, setLoading] = useState(false)
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -234,9 +238,6 @@ function LoginForm() {
                   <Link href="/forgot-password?type=admin" style={{ color: "#60a5fa", textDecoration: "none" }}>
                     Forgot password?
                   </Link>
-                  <Link href="/account-recovery?type=admin" style={{ color: "#60a5fa", textDecoration: "none" }}>
-                    Forgot email?
-                  </Link>
                 </div>
               </div>
               <input
@@ -320,7 +321,10 @@ function LoginForm() {
               lineHeight: 1.5,
             }}
           >
-            If the admin email is no longer remembered, use account recovery so access can be restored after verification.
+            We never email the current password. A one-time reset link is sent so a new password can be created.{" "}
+            <Link href="/account-recovery?type=admin" style={{ color: "#60a5fa", textDecoration: "none" }}>
+              Can&apos;t access the admin email?
+            </Link>
           </p>
         </div>
 
