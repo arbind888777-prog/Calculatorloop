@@ -8,11 +8,17 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { toast } from "react-hot-toast"
 import { useSettings } from "@/components/providers/SettingsProvider"
+import { TurnstileWidget } from "@/components/security/TurnstileWidget"
+
+const turnstileSiteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY || ""
 
 export default function ForgotPasswordClient() {
   const searchParams = useSearchParams()
   const [email, setEmail] = useState("")
   const [isLoading, setIsLoading] = useState(false)
+  const [previewResetLink, setPreviewResetLink] = useState("")
+  const [previewFilePath, setPreviewFilePath] = useState("")
+  const [turnstileToken, setTurnstileToken] = useState("")
   const { language } = useSettings()
   const prefix = language === 'en' ? '' : `/${language}`
   const withLocale = (path: string) => `${prefix}${path}`
@@ -22,6 +28,12 @@ export default function ForgotPasswordClient() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+
+    if (turnstileSiteKey && !turnstileToken) {
+      toast.error("Please complete the security check first.")
+      return
+    }
+
     setIsLoading(true)
 
     try {
@@ -30,7 +42,7 @@ export default function ForgotPasswordClient() {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ email }),
+        body: JSON.stringify({ email, turnstileToken }),
       })
 
       const data = await res.json()
@@ -39,6 +51,8 @@ export default function ForgotPasswordClient() {
         throw new Error(data.error || "Something went wrong")
       }
 
+      setPreviewResetLink(data.previewResetLink || "")
+      setPreviewFilePath(data.previewFilePath || "")
       toast.success(data.message || "Reset link sent!")
       setEmail("")
     } catch (error: any) {
@@ -56,6 +70,9 @@ export default function ForgotPasswordClient() {
         </h2>
         <p className="mt-2 text-center text-sm text-muted-foreground">
           Enter your account email and we will send you a reset link.
+        </p>
+        <p className="mt-2 text-center text-xs text-muted-foreground">
+          We never send your old password by email. You will create a new password using a one-time secure link.
         </p>
       </div>
 
@@ -86,6 +103,17 @@ export default function ForgotPasswordClient() {
               </div>
             </div>
 
+            {turnstileSiteKey ? (
+              <div>
+                <Label className="mb-2 block">Security check</Label>
+                <TurnstileWidget
+                  siteKey={turnstileSiteKey}
+                  action="forgot_password"
+                  onVerify={setTurnstileToken}
+                />
+              </div>
+            ) : null}
+
             <div>
               <Button
                 type="submit"
@@ -96,6 +124,26 @@ export default function ForgotPasswordClient() {
               </Button>
             </div>
           </form>
+
+          {previewResetLink && (
+            <div className="mt-6 rounded-lg border border-amber-500/40 bg-amber-500/10 p-4 text-sm">
+              <p className="font-medium text-amber-300">Local development preview</p>
+              <p className="mt-1 text-amber-100/90">
+                Email provider configured nahi hai, isliye reset email local preview ke roop me save hua hai.
+              </p>
+              <a
+                href={previewResetLink}
+                className="mt-3 block break-all font-medium text-cyan-300 hover:text-cyan-200"
+              >
+                Open reset link
+              </a>
+              {previewFilePath && (
+                <p className="mt-2 break-all text-xs text-amber-100/80">
+                  Saved preview: <span className="font-mono">{previewFilePath}</span>
+                </p>
+              )}
+            </div>
+          )}
 
           <div className="mt-6">
             <div className="relative">

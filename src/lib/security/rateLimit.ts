@@ -43,8 +43,12 @@ export const RATE_LIMIT_CONFIG = {
   adminLogin: { requests: 5, window: 900 }, // 5 attempts per 15 minutes for admin
   newsletter: { requests: 2, window: 3600 }, // 2 requests per hour
   apiKeyCreate: { requests: 5, window: 3600 }, // 5 API keys per hour
-  passwordReset: { requests: 3, window: 3600 }, // 3 password resets per hour
-  accountRecovery: { requests: 3, window: 3600 }, // 3 account recovery requests per hour
+  passwordReset: { requests: 3, window: 3600 }, // legacy alias
+  passwordResetEmail: { requests: 3, window: 3600 }, // 3 requests per email per hour
+  passwordResetIp: { requests: 5, window: 3600 }, // 5 requests per IP per hour
+  accountRecovery: { requests: 3, window: 3600 }, // legacy alias
+  accountRecoveryEmail: { requests: 3, window: 3600 }, // 3 requests per email per hour
+  accountRecoveryIp: { requests: 4, window: 3600 }, // 4 requests per IP per hour
 };
 
 /**
