@@ -44,6 +44,7 @@ export const RATE_LIMIT_CONFIG = {
   newsletter: { requests: 2, window: 3600 }, // 2 requests per hour
   apiKeyCreate: { requests: 5, window: 3600 }, // 5 API keys per hour
   passwordReset: { requests: 3, window: 3600 }, // 3 password resets per hour
+  accountRecovery: { requests: 3, window: 3600 }, // 3 account recovery requests per hour
 };
 
 /**

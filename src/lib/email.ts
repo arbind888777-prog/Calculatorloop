@@ -1,5 +1,6 @@
 // Email service using Resend
 import { Resend } from 'resend';
+import { escapeHtml } from '@/lib/security/sanitize';
 
 // Initialize with a dummy key if missing to prevent build failures
 const resend = new Resend(process.env.RESEND_API_KEY || 're_123456789');
@@ -14,6 +15,8 @@ export interface SendEmailOptions {
   bcc?: string | string[];
   tags?: Array<{ name: string; value: string }>;
 }
+
+const SUPPORT_EMAIL = process.env.SUPPORT_EMAIL || 'support@calculatorloop.com';
 
 /**
  * Send an email using Resend
@@ -66,7 +69,7 @@ export async function sendCalculationEmail(
     html,
     tags: [
       { name: 'category', value: 'calculation' },
-      { name: 'calculator', value: calculatorName.toLowerCase().replace(/\s+/g, '-') },
+      { name: 'calculator', value: calculatorName.toLowerCase().replace(/s+/g, '-') },
     ],
   });
 }
@@ -113,13 +116,49 @@ export async function sendPasswordResetEmail(to: string, resetLink: string) {
   });
 }
 
+export interface AccountRecoveryRequest {
+  accountType: 'user' | 'admin';
+  name: string;
+  contactEmail: string;
+  loginHint?: string;
+  phone?: string;
+  message: string;
+}
+
+export async function sendAccountRecoverySupportEmail(request: AccountRecoveryRequest) {
+  const html = generateAccountRecoverySupportEmailHTML(request);
+
+  return sendEmail({
+    to: SUPPORT_EMAIL,
+    replyTo: request.contactEmail,
+    subject: `Account recovery request (${request.accountType}) - ${request.name}`,
+    html,
+    tags: [{ name: 'category', value: 'account-recovery' }],
+  });
+}
+
+export async function sendAccountRecoveryAcknowledgement(
+  to: string,
+  name: string,
+  accountType: 'user' | 'admin'
+) {
+  const html = generateAccountRecoveryAcknowledgementHTML(name, accountType);
+
+  return sendEmail({
+    to,
+    subject: 'We received your account recovery request - Calculator Pro',
+    html,
+    tags: [{ name: 'category', value: 'account-recovery' }],
+  });
+}
+
 /**
  * Generate HTML for password reset email
  */
 function generatePasswordResetEmailHTML(resetLink: string): string {
   const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://calculatorloop.com';
 
-  return \`
+  return `
     <!DOCTYPE html>
     <html>
       <head>
@@ -163,13 +202,90 @@ function generatePasswordResetEmailHTML(resetLink: string): string {
           <p>We received a request to reset the password for your account associated with this email address.</p>
           <p>Click the button below to reset your password. This link will expire in 1 hour.</p>
           <div style="text-align: center; margin: 32px 0;">
-            <a href="\${resetLink}" class="button">Reset Password</a>
+            <a href="${resetLink}" class="button">Reset Password</a>
           </div>
           <p>If you did not request this, you can safely ignore this email.</p>
         </div>
       </body>
     </html>
-  \`;
+  `;
+}
+
+function generateAccountRecoverySupportEmailHTML(request: AccountRecoveryRequest): string {
+  return `
+    <!DOCTYPE html>
+    <html>
+      <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Account Recovery Request</title>
+      </head>
+      <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #111827; background: #f3f4f6; padding: 24px;">
+        <div style="max-width: 640px; margin: 0 auto; background: #ffffff; border-radius: 12px; padding: 32px; border: 1px solid #e5e7eb;">
+          <h1 style="margin-top: 0; font-size: 24px;">New Account Recovery Request</h1>
+          <p>A user submitted a support-assisted account recovery request.</p>
+          <table style="width: 100%; border-collapse: collapse; margin-top: 24px;">
+            <tr>
+              <td style="padding: 10px 0; font-weight: 600; width: 180px;">Account type</td>
+              <td style="padding: 10px 0;">${escapeHtml(request.accountType)}</td>
+            </tr>
+            <tr>
+              <td style="padding: 10px 0; font-weight: 600;">Name</td>
+              <td style="padding: 10px 0;">${escapeHtml(request.name)}</td>
+            </tr>
+            <tr>
+              <td style="padding: 10px 0; font-weight: 600;">Reply email</td>
+              <td style="padding: 10px 0;">${escapeHtml(request.contactEmail)}</td>
+            </tr>
+            <tr>
+              <td style="padding: 10px 0; font-weight: 600;">Login hint</td>
+              <td style="padding: 10px 0;">${escapeHtml(request.loginHint || 'Not provided')}</td>
+            </tr>
+            <tr>
+              <td style="padding: 10px 0; font-weight: 600;">Phone</td>
+              <td style="padding: 10px 0;">${escapeHtml(request.phone || 'Not provided')}</td>
+            </tr>
+          </table>
+          <div style="margin-top: 24px;">
+            <div style="font-weight: 600; margin-bottom: 8px;">Details</div>
+            <div style="white-space: pre-wrap; padding: 16px; background: #f9fafb; border-radius: 8px; border: 1px solid #e5e7eb;">
+              ${escapeHtml(request.message)}
+            </div>
+          </div>
+        </div>
+      </body>
+    </html>
+  `;
+}
+
+function generateAccountRecoveryAcknowledgementHTML(
+  name: string,
+  accountType: 'user' | 'admin'
+): string {
+  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://calculatorloop.com';
+
+  return `
+    <!DOCTYPE html>
+    <html>
+      <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Account Recovery Request Received</title>
+      </head>
+      <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #111827; background: #f3f4f6; padding: 24px;">
+        <div style="max-width: 640px; margin: 0 auto; background: #ffffff; border-radius: 12px; padding: 32px; border: 1px solid #e5e7eb;">
+          <h1 style="margin-top: 0; font-size: 24px;">We received your recovery request</h1>
+          <p>Hi ${escapeHtml(name)},</p>
+          <p>Thanks for contacting us. Our team will review your ${accountType} account recovery request and reply to this email address after verification.</p>
+          <p>For your privacy, we do not reveal login emails automatically unless identity checks are completed.</p>
+          <div style="margin: 24px 0;">
+            <a href="${baseUrl}/contact" style="display: inline-block; padding: 12px 24px; background: linear-gradient(135deg, #00D4FF 0%, #8B5CF6 100%); color: #ffffff; text-decoration: none; border-radius: 8px; font-weight: 600;">Contact Support</a>
+          </div>
+          <p style="color: #6b7280; font-size: 14px;">If you remember your login email later, you can directly use the password reset form instead.</p>
+        </div>
+      </body>
+    </html>
+  `;
 }
 
 /**

@@ -38,6 +38,67 @@ export const loginSchema = z.object({
   password: z.string().min(1, 'Password is required'),
 });
 
+export const forgotPasswordSchema = z.object({
+  email: z
+    .string()
+    .trim()
+    .email('Invalid email address')
+    .max(255, 'Email must be less than 255 characters')
+    .toLowerCase(),
+});
+
+export const resetPasswordSchema = z.object({
+  email: z
+    .string()
+    .trim()
+    .email('Invalid email address')
+    .max(255, 'Email must be less than 255 characters')
+    .toLowerCase(),
+  token: z
+    .string()
+    .trim()
+    .min(32, 'Invalid reset token')
+    .max(255, 'Invalid reset token'),
+  password: registrationSchema.shape.password,
+});
+
+export const accountRecoverySchema = z.object({
+  accountType: z.enum(['user', 'admin']).default('user'),
+  name: z
+    .string()
+    .trim()
+    .min(2, 'Name must be at least 2 characters')
+    .max(100, 'Name must be less than 100 characters')
+    .regex(
+      /^[\p{L}\p{M}][\p{L}\p{M}\s.'-]*$/u,
+      'Name can only contain letters, spaces, apostrophes, periods, and hyphens'
+    ),
+  contactEmail: z
+    .string()
+    .trim()
+    .email('Invalid contact email address')
+    .max(255, 'Contact email must be less than 255 characters')
+    .toLowerCase(),
+  loginHint: z
+    .string()
+    .trim()
+    .max(255, 'Login hint must be less than 255 characters')
+    .optional()
+    .or(z.literal('')),
+  phone: z
+    .string()
+    .trim()
+    .max(30, 'Phone number must be less than 30 characters')
+    .regex(/^[\d+\-() ]*$/, 'Phone can only contain numbers, spaces, +, -, and parentheses')
+    .optional()
+    .or(z.literal('')),
+  message: z
+    .string()
+    .trim()
+    .min(10, 'Please share a little more detail')
+    .max(1000, 'Message must be less than 1000 characters'),
+});
+
 // Contact form schema
 export const contactSchema = z.object({
   name: z

@@ -1,14 +1,27 @@
 import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
-import bcrypt from "bcryptjs"
+import { hashPassword, hashResetToken } from "@/lib/password"
+import {
+  resetPasswordSchema,
+  validateAndSanitize,
+} from "@/lib/security/validation"
+import { sanitizeEmail } from "@/lib/security/sanitize"
 
 export async function POST(req: Request) {
   try {
-    const { email, token, password } = await req.json()
+    const body = await req.json()
+    const validation = validateAndSanitize(resetPasswordSchema, body)
 
-    if (!email || !token || !password) {
-      return NextResponse.json({ error: "Missing required fields" }, { status: 400 })
+    if (!validation.success) {
+      return NextResponse.json(
+        { error: "Validation failed", details: validation.errors },
+        { status: 400 }
+      )
     }
+
+    const email = sanitizeEmail(validation.data.email)
+    const token = hashResetToken(validation.data.token)
+    const password = validation.data.password
 
     const verificationToken = await prisma.verificationToken.findFirst({
       where: { identifier: email, token }
@@ -22,16 +35,35 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Token has expired" }, { status: 400 })
     }
 
-    const hashedPassword = await bcrypt.hash(password, 10)
+    const hashedPassword = await hashPassword(password)
 
-    await prisma.user.update({
+    const user = await prisma.user.findUnique({
       where: { email },
-      data: { password: hashedPassword }
+      select: { id: true },
     })
 
-    await prisma.verificationToken.delete({
-      where: { identifier_token: { identifier: email, token } }
-    })
+    if (!user) {
+      return NextResponse.json({ error: "Invalid token" }, { status: 400 })
+    }
+
+    await prisma.$transaction([
+      prisma.user.update({
+        where: { email },
+        data: { password: hashedPassword }
+      }),
+      prisma.verificationToken.deleteMany({
+        where: { identifier: email }
+      }),
+    ])
+
+    await prisma.activityLog.create({
+      data: {
+        userId: user.id,
+        action: "auth.password_reset_completed",
+        entityType: "auth",
+        details: JSON.stringify({ email }),
+      },
+    }).catch(() => null)
 
     return NextResponse.json({ message: "Password updated successfully" })
   } catch (error) {

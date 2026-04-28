@@ -54,7 +54,7 @@ export default function LoginClient() {
     }
   }, [searchParams])
 
-  const defaultDashboardPath = useMemo(() => withLocale('/profile'), [language])
+  const defaultDashboardPath = prefix ? `${prefix}/profile` : "/profile"
 
   const absoluteCallbackUrl = useMemo(() => {
     if (typeof window === 'undefined') {
@@ -147,12 +147,20 @@ export default function LoginClient() {
             <div>
               <div className="flex items-center justify-between">
                 <Label htmlFor="password">Password</Label>
-                <Link
-                  href={withLocale("/forgot-password")}
-                  className="text-sm font-medium text-primary hover:text-primary/90"
-                >
-                  Forgot password?
-                </Link>
+                <div className="flex items-center gap-3">
+                  <Link
+                    href={withLocale("/forgot-password")}
+                    className="text-sm font-medium text-primary hover:text-primary/90"
+                  >
+                    Forgot password?
+                  </Link>
+                  <Link
+                    href={withLocale("/account-recovery")}
+                    className="text-sm font-medium text-primary hover:text-primary/90"
+                  >
+                    Forgot email?
+                  </Link>
+                </div>
               </div>
               <div className="mt-1">
                 <Input
@@ -178,6 +186,10 @@ export default function LoginClient() {
               </Button>
             </div>
           </form>
+
+          <p className="mt-4 text-center text-xs text-muted-foreground">
+            If you forgot your login email, use account recovery so support can verify and help securely.
+          </p>
 
           <div className="mt-6">
             <div className="relative">

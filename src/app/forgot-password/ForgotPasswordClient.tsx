@@ -2,6 +2,7 @@
 
 import { useState } from "react"
 import Link from "next/link"
+import { useSearchParams } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -9,11 +10,15 @@ import { toast } from "react-hot-toast"
 import { useSettings } from "@/components/providers/SettingsProvider"
 
 export default function ForgotPasswordClient() {
+  const searchParams = useSearchParams()
   const [email, setEmail] = useState("")
   const [isLoading, setIsLoading] = useState(false)
   const { language } = useSettings()
   const prefix = language === 'en' ? '' : `/${language}`
   const withLocale = (path: string) => `${prefix}${path}`
+  const isAdminRecovery = searchParams?.get("type") === "admin"
+  const recoveryHref = withLocale(`/account-recovery${isAdminRecovery ? "?type=admin" : ""}`)
+  const loginHref = isAdminRecovery ? "/admin/login" : withLocale("/login")
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -47,15 +52,23 @@ export default function ForgotPasswordClient() {
     <div className="flex min-h-screen flex-col items-center justify-center py-12 sm:px-6 lg:px-8 bg-background">
       <div className="sm:mx-auto sm:w-full sm:max-w-md">
         <h2 className="mt-6 text-center text-3xl font-bold tracking-tight text-foreground">
-          Forgot Password
+          {isAdminRecovery ? "Admin Password Reset" : "Forgot Password"}
         </h2>
         <p className="mt-2 text-center text-sm text-muted-foreground">
-          Enter your email and we will send you a reset link.
+          Enter your account email and we will send you a reset link.
         </p>
       </div>
 
       <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
         <div className="bg-card px-4 py-8 shadow sm:rounded-lg sm:px-10 border">
+          <div className="mb-6 rounded-lg border bg-muted/30 p-3 text-sm text-muted-foreground">
+            Don&apos;t remember the login email? Use{" "}
+            <Link href={recoveryHref} className="font-medium text-primary hover:text-primary/90">
+              account recovery
+            </Link>{" "}
+            so support can verify your identity safely.
+          </div>
+
           <form className="space-y-6" onSubmit={handleSubmit}>
             <div>
               <Label htmlFor="email">Email address</Label>
@@ -98,10 +111,16 @@ export default function ForgotPasswordClient() {
 
             <div className="mt-6 flex justify-center text-sm space-x-4">
               <Link
-                href={withLocale("/login")}
+                href={loginHref}
                 className="font-medium text-primary hover:text-primary/90"
               >
                 Back to Login
+              </Link>
+              <Link
+                href={recoveryHref}
+                className="font-medium text-primary hover:text-primary/90"
+              >
+                Forgot email?
               </Link>
             </div>
           </div>
