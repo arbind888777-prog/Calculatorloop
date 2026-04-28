@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, Suspense } from "react"
+import Link from "next/link"
 import { signIn } from "next-auth/react"
 import { useRouter, useSearchParams } from "next/navigation"
 
@@ -208,18 +209,36 @@ function LoginForm() {
 
             {/* Password field */}
             <div style={{ marginBottom: "24px" }}>
-              <label
-                htmlFor="admin-password"
+              <div
                 style={{
-                  display: "block",
-                  fontSize: "13px",
-                  fontWeight: 500,
-                  color: "#94a3b8",
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
                   marginBottom: "6px",
+                  gap: "12px",
+                  flexWrap: "wrap",
                 }}
               >
-                Password
-              </label>
+                <label
+                  htmlFor="admin-password"
+                  style={{
+                    display: "block",
+                    fontSize: "13px",
+                    fontWeight: 500,
+                    color: "#94a3b8",
+                  }}
+                >
+                  Password
+                </label>
+                <div style={{ display: "flex", gap: "12px", fontSize: "12px" }}>
+                  <Link href="/forgot-password?type=admin" style={{ color: "#60a5fa", textDecoration: "none" }}>
+                    Forgot password?
+                  </Link>
+                  <Link href="/account-recovery?type=admin" style={{ color: "#60a5fa", textDecoration: "none" }}>
+                    Forgot email?
+                  </Link>
+                </div>
+              </div>
               <input
                 id="admin-password"
                 type="password"
@@ -292,6 +311,17 @@ function LoginForm() {
               )}
             </button>
           </form>
+
+          <p
+            style={{
+              color: "#5a7090",
+              fontSize: "12px",
+              marginTop: "16px",
+              lineHeight: 1.5,
+            }}
+          >
+            If the admin email is no longer remembered, use account recovery so access can be restored after verification.
+          </p>
         </div>
 
         {/* Footer */}
