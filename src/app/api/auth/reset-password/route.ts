@@ -6,6 +6,7 @@ import {
   validateAndSanitize,
 } from "@/lib/security/validation"
 import { sanitizeEmail } from "@/lib/security/sanitize"
+import { sendPasswordChangedEmail } from "@/lib/email"
 
 export async function POST(req: Request) {
   try {
@@ -49,10 +50,16 @@ export async function POST(req: Request) {
     await prisma.$transaction([
       prisma.user.update({
         where: { email },
-        data: { password: hashedPassword }
+        data: {
+          password: hashedPassword,
+          passwordChangedAt: new Date(),
+        }
       }),
       prisma.verificationToken.deleteMany({
         where: { identifier: email }
+      }),
+      prisma.session.deleteMany({
+        where: { userId: user.id }
       }),
     ])
 
@@ -64,6 +71,11 @@ export async function POST(req: Request) {
         details: JSON.stringify({ email }),
       },
     }).catch(() => null)
+
+    await sendPasswordChangedEmail(email).catch((error) => {
+      console.error("Password changed notification failed:", error)
+      return null
+    })
 
     return NextResponse.json({ message: "Password updated successfully" })
   } catch (error) {

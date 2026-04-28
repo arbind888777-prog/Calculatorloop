@@ -10,8 +10,10 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { useSettings } from "@/components/providers/SettingsProvider"
+import { TurnstileWidget } from "@/components/security/TurnstileWidget"
 
 type AccountType = "user" | "admin"
+const turnstileSiteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY || ""
 
 export default function AccountRecoveryClient() {
   const searchParams = useSearchParams()
@@ -32,6 +34,7 @@ export default function AccountRecoveryClient() {
     loginHint: "",
     phone: "",
     message: "",
+    turnstileToken: "",
   })
 
   const forgotPasswordHref =
@@ -50,6 +53,12 @@ export default function AccountRecoveryClient() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+
+    if (turnstileSiteKey && !formData.turnstileToken) {
+      toast.error("Please complete the security check first.")
+      return
+    }
+
     setIsLoading(true)
 
     try {
@@ -76,6 +85,7 @@ export default function AccountRecoveryClient() {
         loginHint: "",
         phone: "",
         message: "",
+        turnstileToken: "",
       })
     } catch (error: any) {
       toast.error(error.message || "Failed to submit recovery request")
@@ -203,6 +213,17 @@ export default function AccountRecoveryClient() {
                 {formData.message.length}/1000 characters
               </p>
             </div>
+
+            {turnstileSiteKey ? (
+              <div>
+                <Label className="mb-2 block">Security check</Label>
+                <TurnstileWidget
+                  siteKey={turnstileSiteKey}
+                  action="account_recovery"
+                  onVerify={(token) => handleChange("turnstileToken", token)}
+                />
+              </div>
+            ) : null}
 
             <Button
               type="submit"

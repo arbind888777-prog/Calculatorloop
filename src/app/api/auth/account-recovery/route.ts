@@ -16,6 +16,7 @@ import {
   sendAccountRecoveryAcknowledgement,
   sendAccountRecoverySupportEmail,
 } from "@/lib/email"
+import { verifyTurnstileToken } from "@/lib/security/turnstile"
 
 const GENERIC_SUCCESS_MESSAGE =
   "Recovery request received. Our support team will review it and reply to your contact email."
@@ -23,20 +24,6 @@ const GENERIC_SUCCESS_MESSAGE =
 export async function POST(req: Request) {
   try {
     const clientId = getClientIdentifier(req)
-    const rateLimit = withRateLimit(clientId, "accountRecovery")
-
-    if (!rateLimit.success) {
-      return NextResponse.json(
-        { error: rateLimit.error },
-        {
-          status: 429,
-          headers: {
-            "Retry-After": String(rateLimit.retryAfter),
-          },
-        }
-      )
-    }
-
     const body = await req.json()
     const validation = validateAndSanitize(accountRecoverySchema, body)
 
@@ -61,6 +48,39 @@ export async function POST(req: Request) {
     const normalizedLoginHint = sanitizeText(loginHint || "")
     const normalizedPhone = sanitizePhone(phone || "")
     const normalizedMessage = sanitizeText(message)
+    const turnstileCheck = await verifyTurnstileToken({
+      token: validation.data.turnstileToken,
+      remoteIp: clientId,
+      expectedAction: "account_recovery",
+    })
+
+    if (!turnstileCheck.success) {
+      return NextResponse.json(
+        { error: turnstileCheck.error },
+        { status: 400 }
+      )
+    }
+
+    const emailRateLimit = withRateLimit(normalizedContactEmail, "accountRecoveryEmail")
+    const ipRateLimit = withRateLimit(clientId, "accountRecoveryIp")
+    const blockedRateLimit =
+      !emailRateLimit.success
+        ? emailRateLimit
+        : !ipRateLimit.success
+          ? ipRateLimit
+          : null
+
+    if (blockedRateLimit) {
+      return NextResponse.json(
+        { error: blockedRateLimit.error },
+        {
+          status: 429,
+          headers: {
+            "Retry-After": String(blockedRateLimit.retryAfter),
+          },
+        }
+      )
+    }
 
     if (
       hasSqlInjection(normalizedName) ||
@@ -82,6 +102,7 @@ export async function POST(req: Request) {
       loginHint: normalizedLoginHint || null,
       phone: normalizedPhone || null,
       message: normalizedMessage,
+      clientId,
       source: "self_service_account_recovery",
     }
 

@@ -45,6 +45,7 @@ export const forgotPasswordSchema = z.object({
     .email('Invalid email address')
     .max(255, 'Email must be less than 255 characters')
     .toLowerCase(),
+  turnstileToken: z.string().trim().max(2048).optional(),
 });
 
 export const resetPasswordSchema = z.object({
@@ -97,6 +98,7 @@ export const accountRecoverySchema = z.object({
     .trim()
     .min(10, 'Please share a little more detail')
     .max(1000, 'Message must be less than 1000 characters'),
+  turnstileToken: z.string().trim().max(2048).optional(),
 });
 
 // Contact form schema

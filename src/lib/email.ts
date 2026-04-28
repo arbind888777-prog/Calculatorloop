@@ -1,9 +1,13 @@
 // Email service using Resend
 import { Resend } from 'resend';
 import { escapeHtml } from '@/lib/security/sanitize';
+import { mkdir, writeFile } from 'fs/promises';
+import path from 'path';
+import { randomUUID } from 'crypto';
 
-// Initialize with a dummy key if missing to prevent build failures
-const resend = new Resend(process.env.RESEND_API_KEY || 're_123456789');
+const resendApiKey = process.env.RESEND_API_KEY;
+const resend = resendApiKey ? new Resend(resendApiKey) : null;
+const isProduction = process.env.NODE_ENV === 'production';
 
 export interface SendEmailOptions {
   to: string | string[];
@@ -14,14 +18,59 @@ export interface SendEmailOptions {
   cc?: string | string[];
   bcc?: string | string[];
   tags?: Array<{ name: string; value: string }>;
+  previewData?: Record<string, unknown>;
 }
 
 const SUPPORT_EMAIL = process.env.SUPPORT_EMAIL || 'support@calculatorloop.com';
 
+export interface EmailPreview {
+  filePath: string;
+  previewData?: Record<string, unknown>;
+}
+
+export interface EmailSendResult {
+  success: boolean;
+  data?: unknown;
+  error?: unknown;
+  preview?: EmailPreview;
+  mode?: 'provider' | 'preview';
+}
+
+function isEmailProviderConfigured() {
+  return Boolean(process.env.RESEND_API_KEY && process.env.EMAIL_FROM);
+}
+
+async function writeEmailPreview(options: SendEmailOptions): Promise<EmailPreview> {
+  const previewDir = path.join(process.cwd(), 'diagnostics', 'email-previews');
+  await mkdir(previewDir, { recursive: true });
+
+  const filePath = path.join(
+    previewDir,
+    `${new Date().toISOString().replace(/[:.]/g, '-')}-${randomUUID()}.json`
+  );
+
+  const payload = {
+    createdAt: new Date().toISOString(),
+    to: Array.isArray(options.to) ? options.to : [options.to],
+    subject: options.subject,
+    from: options.from || process.env.EMAIL_FROM || 'Calculator Pro <noreply@calculatorloop.com>',
+    replyTo: options.replyTo || null,
+    html: options.html,
+    previewData: options.previewData || null,
+  };
+
+  await writeFile(filePath, JSON.stringify(payload, null, 2), 'utf8');
+
+  return {
+    filePath,
+    previewData: options.previewData,
+  };
+}
+
 /**
  * Send an email using Resend
  */
-export async function sendEmail(options: SendEmailOptions) {
+export async function sendEmail(options: SendEmailOptions): Promise<EmailSendResult> {
   const {
     to,
     subject,
@@ -32,6 +81,28 @@ export async function sendEmail(options: SendEmailOptions) {
     bcc,
     tags,
   } = options;
+
+  if (!isEmailProviderConfigured()) {
+    if (isProduction) {
+      const error = new Error(
+        'Email provider is not configured. Set RESEND_API_KEY and EMAIL_FROM.'
+      );
+      console.error(error.message);
+      return { success: false, error };
+    }
+
+    const preview = await writeEmailPreview(options);
+    console.warn(
+      `Email provider not configured. Saved local email preview to ${preview.filePath}`
+    );
+    return { success: true, preview, mode: 'preview' };
+  }
+
+  if (!resend) {
+    const error = new Error('Resend client could not be initialized.');
+    console.error(error.message);
+    return { success: false, error };
+  }
 
   try {
     const data = await resend.emails.send({
@@ -45,7 +116,7 @@ export async function sendEmail(options: SendEmailOptions) {
       tags,
     });
 
-    return { success: true, data };
+    return { success: true, data, mode: 'provider' };
   } catch (error) {
     console.error('Email send error:', error);
     return { success: false, error };
@@ -113,7 +184,19 @@ export async function sendPasswordResetEmail(to: string, resetLink: string) {
     subject: 'Reset your password - Calculator Pro',
     html,
     tags: [{ name: 'category', value: 'reset-password' }],
+    previewData: { resetLink },
   });
+}
+
+export async function sendPasswordChangedEmail(to: string) {
+  const html = generatePasswordChangedEmailHTML()
+
+  return sendEmail({
+    to,
+    subject: 'Your password was changed - Calculator Pro',
+    html,
+    tags: [{ name: 'category', value: 'password-changed' }],
+  })
 }
 
 export interface AccountRecoveryRequest {
@@ -282,6 +365,32 @@ function generateAccountRecoveryAcknowledgementHTML(
             <a href="${baseUrl}/contact" style="display: inline-block; padding: 12px 24px; background: linear-gradient(135deg, #00D4FF 0%, #8B5CF6 100%); color: #ffffff; text-decoration: none; border-radius: 8px; font-weight: 600;">Contact Support</a>
           </div>
           <p style="color: #6b7280; font-size: 14px;">If you remember your login email later, you can directly use the password reset form instead.</p>
+        </div>
+      </body>
+    </html>
+  `;
+}
+
+function generatePasswordChangedEmailHTML(): string {
+  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://calculatorloop.com';
+
+  return `
+    <!DOCTYPE html>
+    <html>
+      <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Password Changed</title>
+      </head>
+      <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #111827; background: #f3f4f6; padding: 24px;">
+        <div style="max-width: 640px; margin: 0 auto; background: #ffffff; border-radius: 12px; padding: 32px; border: 1px solid #e5e7eb;">
+          <h1 style="margin-top: 0; font-size: 24px;">Your password was changed</h1>
+          <p>This is a security confirmation that the password for your account has just been updated.</p>
+          <p>If this was you, no further action is needed.</p>
+          <p>If you did not make this change, reset your password immediately and contact support.</p>
+          <div style="margin: 24px 0;">
+            <a href="${baseUrl}/forgot-password" style="display: inline-block; padding: 12px 24px; background: linear-gradient(135deg, #00D4FF 0%, #8B5CF6 100%); color: #ffffff; text-decoration: none; border-radius: 8px; font-weight: 600;">Secure Your Account</a>
+          </div>
         </div>
       </body>
     </html>

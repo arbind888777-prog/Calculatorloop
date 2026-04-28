@@ -28,6 +28,13 @@ export default async function middleware(request: NextRequest) {
       return NextResponse.redirect(loginUrl)
     }
 
+    if ((token.sessionRevoked as boolean | undefined) === true) {
+      const loginUrl = new URL('/admin/login', request.url)
+      loginUrl.searchParams.set('callbackUrl', pathname)
+      loginUrl.searchParams.set('error', 'SessionRevoked')
+      return NextResponse.redirect(loginUrl)
+    }
+
     // Authenticated but not an admin role → redirect to home
     const role = token.role as string | undefined
     const hasAccess = hasAdminPageAccess(role)
@@ -45,6 +52,10 @@ export default async function middleware(request: NextRequest) {
 
     if (!token) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    if ((token.sessionRevoked as boolean | undefined) === true) {
+      return NextResponse.json({ error: 'Session revoked. Please sign in again.' }, { status: 401 })
     }
 
     const role = token.role as string | undefined
