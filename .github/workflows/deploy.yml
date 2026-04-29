@@ -1,4 +1,4 @@
-name: Deploy CalculatorLoop
+name: Deploy Calculatorloop Team
 
 on:
   push:
@@ -14,13 +14,13 @@ jobs:
       - name: Deploy to VPS
         uses: appleboy/ssh-action@v1.0.3
         with:
-          host: ${{ secrets.VPS_IP }}
-          username: ${{ secrets.VPS_USERNAME }}
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
-          port: 22
+          port: ${{ secrets.VPS_PORT }}
           script: |
             cd /var/www/Calculatorloop || exit
             git pull origin main
             npm install
             npm run build
-            pm2 restart calculator-app || pm2 start npm --name "calculator-app" -- start
+            pm2 restart calculatorloop-team || pm2 start npm --name "calculatorloop-team" -- start
