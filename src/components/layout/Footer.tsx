@@ -36,7 +36,7 @@ export function Footer() {
           <div className="space-y-4 lg:col-span-2">
             <Link href={withLocale("/")} className="flex items-center gap-2 text-xl font-bold text-primary">
               <Calculator className="h-6 w-6" />
-              <span>Calculator Hub</span>
+              <span>Calculator Loop</span>
             </Link>
             <p className="text-sm text-muted-foreground">{t.footer.tagline}</p>
             <div className="flex gap-3">
@@ -57,7 +57,7 @@ export function Footer() {
                 <Twitter className="h-4 w-4" />
               </a>
               <a
-                href="mailto:contact@calculatorhub.com"
+                href="mailto:contact@calculatorloop.com"
                 className="flex h-9 w-9 items-center justify-center rounded-lg bg-secondary transition-colors hover:bg-secondary/80"
               >
                 <Mail className="h-4 w-4" />
@@ -104,7 +104,7 @@ export function Footer() {
 
         <div className="mt-12 flex items-center justify-center border-t border-border/40 pt-8">
           <p className="text-center text-sm text-muted-foreground">
-            &copy; {currentYear} Calculator Hub. {t.footer.rights}
+            &copy; {currentYear} Calculator Loop. {t.footer.rights}
           </p>
         </div>
       </div>
