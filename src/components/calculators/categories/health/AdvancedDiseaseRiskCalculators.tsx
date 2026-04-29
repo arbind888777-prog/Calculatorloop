@@ -322,7 +322,7 @@ export function HOMAIRCalculator() {
 }
 
 // ─── 5. eGFR Calculator (Kidney Function) ────────────────────────────────────
-export function eGFRCalculator() {
+export function EGFRCalculator() {
   const [creatinine, setCreatinine] = useState(0.9)
   const [age, setAge] = useState(40)
   const [gender, setGender] = useState("male")
@@ -387,6 +387,8 @@ export function eGFRCalculator() {
       </div>} />
   )
 }
+
+export { EGFRCalculator as eGFRCalculator }
 
 // ─── 6. Creatinine Clearance (Cockcroft-Gault) ───────────────────────────────
 export function CrClCalculator() {

@@ -546,13 +546,24 @@ export const RichEditor = forwardRef<RichEditorHandle, RichEditorProps>(function
     runOnSelectedText((chain) => chain.setMark("textStyle", nextAttributes))
   }, [runOnSelectedText])
 
-  // Sync content when language changes
+  // Sync content when language changes without flushing updates during React render.
   useEffect(() => {
-    if (editor && content !== editor.getHTML()) {
-      editor.commands.setContent(content || "")
+    if (!editor) return
+
+    const nextContent = content || ""
+    if (nextContent === editor.getHTML()) return
+
+    const timer = window.setTimeout(() => {
+      if (editor.isDestroyed) return
+      if (nextContent !== editor.getHTML()) {
+        editor.commands.setContent(nextContent, { emitUpdate: false })
+      }
+    }, 0)
+
+    return () => {
+      window.clearTimeout(timer)
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [content])
+  }, [content, editor])
 
   const uploadAndInsertImage = useCallback(
     async (file: File, view: any, insertAt?: number) => {

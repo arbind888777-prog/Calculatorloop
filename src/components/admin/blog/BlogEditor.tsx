@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useCallback, useRef, useEffect, useMemo, type DragEvent } from "react"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import { RichEditor, type RichEditorHandle } from "@/components/admin/blog/RichEditor"
 import { ImageModal } from "@/components/admin/blog/ImageModal"
 import { VideoModal } from "@/components/admin/blog/VideoModal"
@@ -9,6 +9,7 @@ import { AdminButton } from "@/components/admin/ui/Button"
 import { AdminInput, AdminTextarea } from "@/components/admin/ui/Input"
 import { AdminSelect } from "@/components/admin/ui/Select"
 import { Badge } from "@/components/admin/ui/Badge"
+import { toolsData } from "@/lib/toolsData"
 
 const LANGUAGES = [
   { code: "en", label: "English", flag: "🇺🇸" },
@@ -48,11 +49,99 @@ interface BlogEditorProps {
 interface CalculatorOption {
   value: string
   label: string
+  slug?: string
+  categoryId?: string
+  subcategoryKey?: string
 }
 
 type AutoSaveState = "idle" | "saving" | "saved" | "error"
+type TranslationState = Record<string, TranslationData>
+type PersistOptions = {
+  silent?: boolean
+  redirectOnCreate?: boolean
+  showToast?: boolean
+  translationState?: TranslationState
+}
 
 const NEW_DRAFT_STORAGE_KEY = "admin-blog-draft-v2"
+const CATEGORY_ORDER = [
+  "financial",
+  "health",
+  "math",
+  "scientific",
+  "technology",
+  "education",
+  "business",
+  "construction",
+  "everyday",
+  "datetime",
+] as const
+
+const CATEGORY_LABELS: Record<string, string> = {
+  financial: "Financial",
+  health: "Health & Fitness",
+  math: "Mathematics",
+  scientific: "Science",
+  technology: "Technology",
+  education: "Education",
+  business: "Business",
+  construction: "Construction",
+  everyday: "Everyday",
+  datetime: "Date & Time",
+}
+
+function normalizeLooseKey(value?: string | null) {
+  if (!value) return ""
+
+  return value
+    .trim()
+    .toLowerCase()
+    .replace(/[^\p{L}\p{N}]+/gu, "-")
+    .replace(/^-+|-+$/g, "")
+}
+
+function stripLeadingDecorators(value: string) {
+  return value.replace(/^[^\p{L}\p{N}]+/gu, "").trim()
+}
+
+function normalizeCategoryValue(value?: string | null) {
+  const normalized = normalizeLooseKey(value)
+  if (!normalized) return ""
+
+  const aliases: Record<string, string> = {
+    science: "scientific",
+    sci: "scientific",
+    "date-time": "datetime",
+    "date-and-time": "datetime",
+    "health-fitness": "health",
+    "health-and-fitness": "health",
+  }
+
+  if (normalized in aliases) return aliases[normalized]
+  if (normalized in toolsData) return normalized
+  return ""
+}
+
+function normalizeSubcategoryValue(categoryId: string, value?: string | null) {
+  if (!categoryId || !value) return ""
+
+  const category = toolsData[categoryId]
+  if (!category) return ""
+
+  const normalizedValue = normalizeLooseKey(value)
+  if (!normalizedValue) return ""
+
+  for (const [key, subcategory] of Object.entries(category.subcategories ?? {})) {
+    const normalizedKey = normalizeLooseKey(key)
+    const normalizedName = normalizeLooseKey(stripLeadingDecorators(subcategory.name || key))
+
+    if (normalizedValue === normalizedKey || normalizedValue === normalizedName) {
+      return key
+    }
+  }
+
+  return ""
+}
 
 function buildSeoScore(params: {
   title: string
@@ -98,6 +187,70 @@ function buildSeoScore(params: {
   }
 }
 
+function buildQualityChecklist(params: {
+  title: string
+  metaTitle: string
+  metaDesc: string
+  content: string
+  wordCount: number
+  featuredImage: string
+}) {
+  const content = params.content || ""
+  const imageTags = content.match(/<img\b[^>]*>/gi) || []
+  const imagesMissingAlt = imageTags.filter((tag) => !/\salt=(["'])[^"']+\1/i.test(tag)).length
+  const h2Count = (content.match(/<h2\b/gi) || []).length
+  const internalLinks = (content.match(/href="\/(?!\/)/gi) || []).length
+  const externalLinks = (content.match(/href="https?:\/\//gi) || []).length
+
+  return [
+    {
+      label: "Clear title",
+      pass: params.title.trim().length >= 20,
+      hint: "Use a specific title with the main keyword.",
+    },
+    {
+      label: "Meta ready",
+      pass: params.metaTitle.trim().length >= 30 && params.metaDesc.trim().length >= 80,
+      hint: "Add search-friendly meta title and description.",
+    },
+    {
+      label: "Content depth",
+      pass: params.wordCount >= 600 || content.replace(/<[^>]*>/g, " ").trim().length >= 2500,
+      hint: "Aim for enough detail to fully answer the topic.",
+    },
+    {
+      label: "Useful headings",
+      pass: h2Count >= 2,
+      hint: "Add at least two H2 sections for scanning.",
+    },
+    {
+      label: "Image accessibility",
+      pass: imageTags.length === 0 || imagesMissingAlt === 0,
+      hint: imagesMissingAlt > 0 ? `${imagesMissingAlt} image(s) need alt text.` : "Images have alt text.",
+    },
+    {
+      label: "Internal links",
+      pass: internalLinks >= 1,
+      hint: "Link to related calculators or guides.",
+    },
+    {
+      label: "Helpful rich blocks",
+      pass: /blog-faq|blog-callout|<table\b/i.test(content),
+      hint: "Add FAQ, callout, or table blocks where useful.",
+    },
+    {
+      label: "Featured image",
+      pass: Boolean(params.featuredImage),
+      hint: "Set a strong featured image for social previews.",
+    },
+    {
+      label: "Source balance",
+      pass: externalLinks >= 0,
+      hint: externalLinks ? `${externalLinks} external link(s) found.` : "Add sources when facts need support.",
+    },
+  ]
+}
+
 function formatSavedAt(timestamp: number | null) {
   if (!timestamp) return "Not saved yet"
 
@@ -131,6 +284,7 @@ function generateSlug(title: string): string {
 
 export function BlogEditor({ blogId, initialData }: BlogEditorProps) {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const [saving, setSaving] = useState(false)
   const [publishing, setPublishing] = useState(false)
   const [persistedBlogId, setPersistedBlogId] = useState(blogId || "")
@@ -164,8 +318,10 @@ export function BlogEditor({ blogId, initialData }: BlogEditorProps) {
 
   // Blog-level fields
   const [slug, setSlug] = useState(initialData?.slug || "")
-  const [category, setCategory] = useState(initialData?.category || "")
-  const [subcategory, setSubcategory] = useState(initialData?.subcategory || "")
+  const [category, setCategory] = useState(normalizeCategoryValue(initialData?.category) || "")
+  const [subcategory, setSubcategory] = useState(
+    normalizeSubcategoryValue(normalizeCategoryValue(initialData?.category), initialData?.subcategory)
+  )
   const [status, setStatus] = useState(initialData?.status || "DRAFT")
   const [tags, setTags] = useState(initialData?.tags?.join(", ") || "")
   const [linkedCalculatorId, setLinkedCalculatorId] = useState(
@@ -184,6 +340,79 @@ export function BlogEditor({ blogId, initialData }: BlogEditorProps) {
   const effectiveBlogId = blogId || persistedBlogId || undefined
 
   const currentTranslation = translations[activeLanguage] || createEmptyTranslation()
+  const categoryConfigs = useMemo(() => {
+    return CATEGORY_ORDER
+      .filter((categoryId) => Boolean(toolsData[categoryId]))
+      .map((categoryId) => ({
+        id: categoryId,
+        label: CATEGORY_LABELS[categoryId] || categoryId,
+        subcategories: Object.entries(toolsData[categoryId].subcategories ?? {}).map(([key, subcategory]) => ({
+          key,
+          label: stripLeadingDecorators(subcategory.name || key),
+        })),
+      }))
+  }, [])
+  const categoryOptions = useMemo(
+    () => [
+      { value: "", label: "Select category..." },
+      ...categoryConfigs.map((config) => ({
+        value: config.id,
+        label: config.label,
+      })),
+    ],
+    [categoryConfigs]
+  )
+  const selectedCategoryConfig = useMemo(
+    () => categoryConfigs.find((config) => config.id === category) || null,
+    [category, categoryConfigs]
+  )
+  const subcategoryOptions = useMemo(() => {
+    if (!selectedCategoryConfig) {
+      return [{ value: "", label: "Select category first..." }]
+    }
+
+    return [
+      { value: "", label: "No subcategory (optional)" },
+      ...selectedCategoryConfig.subcategories.map((subcategory) => ({
+        value: subcategory.key,
+        label: subcategory.label,
+      })),
+    ]
+  }, [selectedCategoryConfig])
+  const toolHierarchyBySlug = useMemo(() => {
+    const entries = new Map<string, { categoryId: string; subcategoryKey: string }>()
+
+    for (const [categoryId, categoryData] of Object.entries(toolsData)) {
+      for (const [subcategoryKey, subcategoryData] of Object.entries(categoryData.subcategories ?? {})) {
+        for (const tool of subcategoryData.calculators ?? []) {
+          entries.set(tool.id, { categoryId, subcategoryKey })
+        }
+      }
+    }
+
+    return entries
+  }, [])
+
+  useEffect(() => {
+    if (blogId || initialData) return
+
+    const nextCalculator = searchParams.get("calculator") || ""
+    const nextCategory = normalizeCategoryValue(searchParams.get("category"))
+    const nextSubcategory = nextCategory
+      ? normalizeSubcategoryValue(nextCategory, searchParams.get("subcategory"))
+      : ""
+
+    if (!linkedCalculatorId && nextCalculator) {
+      setLinkedCalculatorId(nextCalculator)
+    }
+    if (!category && nextCategory) {
+      setCategory(nextCategory)
+    }
+    if (!subcategory && nextSubcategory) {
+      setSubcategory(nextSubcategory)
+    }
+  }, [blogId, category, initialData, linkedCalculatorId, searchParams, subcategory])
+
   const activeLanguageMeta = LANGUAGES.find((lang) => lang.code === activeLanguage) || LANGUAGES[0]
   const completedTranslations = LANGUAGES.filter((lang) => !!translations[lang.code]?.title).length
   const seoReadyLanguages = LANGUAGES.filter(
@@ -201,14 +430,19 @@ export function BlogEditor({ blogId, initialData }: BlogEditorProps) {
     }),
     [currentTranslation.content, currentTranslation.metaDesc, currentTranslation.metaTitle, currentTranslation.title, currentTranslation.urlSlug, currentTranslation.wordCount, featuredImage, slug]
   )
-  const filteredCalculatorOptions = useMemo(() => {
-    if (!calculatorSearch.trim()) return calculatorOptions
-
-    const query = calculatorSearch.trim().toLowerCase()
-    return calculatorOptions.filter((option) =>
-      option.value === "" || option.label.toLowerCase().includes(query)
-    )
-  }, [calculatorOptions, calculatorSearch])
+  const qualityChecklist = useMemo(
+    () => buildQualityChecklist({
+      title: currentTranslation.title,
+      metaTitle: currentTranslation.metaTitle,
+      metaDesc: currentTranslation.metaDesc,
+      content: currentTranslation.content,
+      wordCount: currentTranslation.wordCount,
+      featuredImage,
+    }),
+    [currentTranslation.content, currentTranslation.metaDesc, currentTranslation.metaTitle, currentTranslation.title, currentTranslation.wordCount, featuredImage]
+  )
+  const passedQualityChecks = qualityChecklist.filter((item) => item.pass).length
+  const calculatorSearchQuery = calculatorSearch.trim()
   const editorSnapshot = useMemo(
     () => JSON.stringify({
       slug,
@@ -231,40 +465,85 @@ export function BlogEditor({ blogId, initialData }: BlogEditorProps) {
   }, [blogId])
 
   useEffect(() => {
-    let mounted = true
+    if (!selectedCategoryConfig) {
+      if (subcategory) setSubcategory("")
+      return
+    }
 
-    async function loadCalculators() {
+    const isValidSubcategory = selectedCategoryConfig.subcategories.some(
+      (item) => item.key === subcategory
+    )
+
+    if (!isValidSubcategory && subcategory) {
+      setSubcategory("")
+    }
+  }, [selectedCategoryConfig, subcategory])
+
+  useEffect(() => {
+    if (!linkedCalculatorId) return
+
+    const selectedCalculator = calculatorOptions.find((option) => option.value === linkedCalculatorId)
+    if (!selectedCalculator?.categoryId || !selectedCalculator.subcategoryKey) return
+
+    setCategory((current) => current === selectedCalculator.categoryId ? current : selectedCalculator.categoryId as string)
+    setSubcategory((current) => current === selectedCalculator.subcategoryKey ? current : selectedCalculator.subcategoryKey as string)
+  }, [calculatorOptions, linkedCalculatorId])
+
+  useEffect(() => {
+    const controller = new AbortController()
+    const timer = setTimeout(async () => {
       setLoadingCalculators(true)
       try {
-        const res = await fetch("/api/admin/calculators?limit=200")
+        const params = new URLSearchParams({ limit: "25" })
+        if (calculatorSearchQuery) {
+          params.set("search", calculatorSearchQuery)
+        }
+        if (linkedCalculatorId) {
+          params.set("selectedId", linkedCalculatorId)
+        }
+
+        const res = await fetch(`/api/admin/calculators?${params.toString()}`, {
+          signal: controller.signal,
+        })
         if (!res.ok) throw new Error("Failed to fetch calculators")
+
         const data = await res.json()
         const options = (data.calculators || []).map((calculator: any) => ({
           value: calculator.id,
           label: `${calculator.name} (${calculator.slug})`,
+          slug: calculator.slug,
+          categoryId: toolHierarchyBySlug.get(calculator.slug)?.categoryId,
+          subcategoryKey: toolHierarchyBySlug.get(calculator.slug)?.subcategoryKey,
         }))
 
-        if (mounted) {
-          setCalculatorOptions([
-            { value: "", label: "No linked calculator" },
-            ...options,
-          ])
-        }
+        setCalculatorOptions((previous) => {
+          const next = [{ value: "", label: "No linked calculator" }, ...options]
+          const selectedOption = linkedCalculatorId
+            ? previous.find((option) => option.value === linkedCalculatorId)
+            : null
+
+          if (selectedOption && !next.some((option) => option.value === selectedOption.value)) {
+            next.push(selectedOption)
+          }
+
+          return next
+        })
       } catch (error) {
-        console.error("Failed to load calculators:", error)
+        if ((error as Error).name !== "AbortError") {
+          console.error("Failed to load calculators:", error)
+        }
       } finally {
-        if (mounted) {
+        if (!controller.signal.aborted) {
           setLoadingCalculators(false)
         }
       }
-    }
-
-    loadCalculators()
+    }, calculatorSearchQuery ? 250 : 0)
 
     return () => {
-      mounted = false
+      clearTimeout(timer)
+      controller.abort()
     }
-  }, [])
+  }, [calculatorSearchQuery, linkedCalculatorId, toolHierarchyBySlug])
 
   useEffect(() => {
     if (effectiveBlogId || initialData || hydratedDraftRef.current) return
@@ -288,8 +567,11 @@ export function BlogEditor({ blogId, initialData }: BlogEditorProps) {
       }
 
       if (draft.slug) setSlug(draft.slug)
-      if (draft.category) setCategory(draft.category)
-      if (draft.subcategory) setSubcategory(draft.subcategory)
+      const restoredCategory = normalizeCategoryValue(draft.category)
+      if (restoredCategory) setCategory(restoredCategory)
+      if (draft.subcategory) {
+        setSubcategory(normalizeSubcategoryValue(restoredCategory, draft.subcategory))
+      }
       if (draft.status) setStatus(draft.status)
       if (draft.tags) setTags(draft.tags.join(", "))
       if (draft.linkedCalculatorId) setLinkedCalculatorId(draft.linkedCalculatorId)
@@ -351,12 +633,16 @@ export function BlogEditor({ blogId, initialData }: BlogEditorProps) {
     }
   }, [])
 
-  const validatePost = useCallback((targetStatus: string) => {
+  const validatePost = useCallback((targetStatus: string, translationState: TranslationState = translations) => {
     if (!slug.trim()) {
       throw new Error("Blog slug is required.")
     }
 
-    const availableTranslations = Object.values(translations).filter((translation) => translation.title.trim())
+    if (!category.trim()) {
+      throw new Error("Select a category before saving this blog post.")
+    }
+
+    const availableTranslations = Object.values(translationState).filter((translation) => translation.title.trim())
     if (availableTranslations.length === 0) {
       throw new Error("At least one language version with a title is required.")
     }
@@ -364,10 +650,14 @@ export function BlogEditor({ blogId, initialData }: BlogEditorProps) {
     if (targetStatus === "SCHEDULED" && !scheduledAt) {
       throw new Error("Select a schedule date and time before scheduling this post.")
     }
-  }, [scheduledAt, slug, translations])
 
-  const syncTranslations = useCallback(async (postId: string, targetStatus: string) => {
-    for (const [language, translation] of Object.entries(translations)) {
+    if ((targetStatus === "PUBLISHED" || targetStatus === "SCHEDULED") && !availableTranslations.some((translation) => translation.isPublished)) {
+      throw new Error("Mark at least one language as ready to publish.")
+    }
+  }, [category, scheduledAt, slug, translations])
+
+  const syncTranslations = useCallback(async (postId: string, translationState: TranslationState) => {
+    for (const [language, translation] of Object.entries(translationState)) {
       if (!translation.title.trim()) continue
 
       const translationRes = await fetch(`/api/admin/blog/${postId}/translations/${language}`, {
@@ -377,7 +667,7 @@ export function BlogEditor({ blogId, initialData }: BlogEditorProps) {
           ...translation,
           title: translation.title.trim(),
           urlSlug: translation.urlSlug || `${language}-${slug.trim()}`,
-          isPublished: targetStatus === "PUBLISHED" ? true : translation.isPublished,
+          isPublished: translation.isPublished,
         }),
       })
 
@@ -385,15 +675,16 @@ export function BlogEditor({ blogId, initialData }: BlogEditorProps) {
         throw new Error(await readApiError(translationRes, `Failed to save ${language.toUpperCase()} translation.`))
       }
     }
-  }, [readApiError, slug, translations])
+  }, [readApiError, slug])
 
   const persistPost = useCallback(async (
     targetStatus: string,
-    options?: { silent?: boolean; redirectOnCreate?: boolean; showToast?: boolean }
+    options?: PersistOptions
   ) => {
     const silent = options?.silent || false
     const redirectOnCreate = options?.redirectOnCreate ?? true
-    validatePost(targetStatus)
+    const translationState = options?.translationState || translations
+    validatePost(targetStatus, translationState)
 
     const body = {
       slug: slug.trim(),
@@ -403,15 +694,15 @@ export function BlogEditor({ blogId, initialData }: BlogEditorProps) {
       featuredImage: featuredImage || null,
       tags: tags.split(",").map((tag) => tag.trim()).filter(Boolean),
       status: targetStatus,
-      scheduledAt: targetStatus === "SCHEDULED" ? scheduledAt || null : scheduledAt || null,
-      translations: Object.entries(translations)
+      scheduledAt: targetStatus === "PUBLISHED" ? null : scheduledAt || null,
+      translations: Object.entries(translationState)
         .filter(([, translation]) => translation.title.trim())
         .map(([language, translation]) => ({
           ...translation,
           language,
           title: translation.title.trim(),
           urlSlug: translation.urlSlug || `${language}-${slug.trim()}`,
-          isPublished: targetStatus === "PUBLISHED" ? true : translation.isPublished,
+          isPublished: translation.isPublished,
         })),
     }
 
@@ -426,7 +717,7 @@ export function BlogEditor({ blogId, initialData }: BlogEditorProps) {
         throw new Error(await readApiError(res, "Failed to update blog post."))
       }
 
-      await syncTranslations(effectiveBlogId, targetStatus)
+      await syncTranslations(effectiveBlogId, translationState)
 
       if (!silent) {
         setLastSavedAt(Date.now())
@@ -619,15 +910,28 @@ export function BlogEditor({ blogId, initialData }: BlogEditorProps) {
     setPublishing(true)
     setSaveError("")
     try {
-      const savedId = await persistPost("PUBLISHED", { redirectOnCreate: false })
+      const publishTranslations = {
+        ...translations,
+        [activeLanguage]: {
+          ...currentTranslation,
+          isPublished: true,
+        },
+      }
+
+      setTranslations(publishTranslations)
+
+      const savedId = await persistPost("PUBLISHED", {
+        redirectOnCreate: false,
+        translationState: publishTranslations,
+      })
       const res = await fetch(`/api/admin/blog/${savedId}/publish`, { method: "POST" })
       if (!res.ok) {
         throw new Error(await readApiError(res, "Failed to publish blog post."))
       }
 
       setStatus("PUBLISHED")
-  setLastSavedAt(Date.now())
-      toast("Blog post published successfully.", "success")
+      setLastSavedAt(Date.now())
+      toast(`${activeLanguage.toUpperCase()} version published successfully.`, "success")
       if (!effectiveBlogId) {
         router.push(`/admin/blog/${savedId}/edit`)
       }
@@ -888,26 +1192,23 @@ export function BlogEditor({ blogId, initialData }: BlogEditorProps) {
           <div className="blog-editor-meta-grid" style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: "12px", marginBottom: "12px" }}>
             <AdminSelect
               label="Category"
-              options={[
-                { value: "", label: "Select category..." },
-                { value: "financial", label: "Financial" },
-                { value: "health", label: "Health & Fitness" },
-                { value: "math", label: "Mathematics" },
-                { value: "science", label: "Science" },
-                { value: "technology", label: "Technology" },
-                { value: "education", label: "Education" },
-                { value: "business", label: "Business" },
-                { value: "construction", label: "Construction" },
-                { value: "everyday", label: "Everyday" },
-              ]}
+              options={categoryOptions}
               value={category}
-              onChange={(e) => setCategory(e.target.value)}
+              onChange={(e) => {
+                const nextCategory = normalizeCategoryValue(e.target.value)
+                setCategory(nextCategory)
+                setSubcategory("")
+              }}
             />
-            <AdminInput
+            <AdminSelect
               label="Subcategory"
+              options={subcategoryOptions}
               value={subcategory}
               onChange={(e) => setSubcategory(e.target.value)}
-              placeholder="e.g. Loans, Mortgages (Optional)"
+              disabled={!selectedCategoryConfig}
+              hint={selectedCategoryConfig
+                ? `${selectedCategoryConfig.subcategories.length} subcategories available`
+                : "Choose a category first"}
             />
             <AdminInput
               label="Blog Slug"
@@ -971,6 +1272,36 @@ export function BlogEditor({ blogId, initialData }: BlogEditorProps) {
             ref={editorRef}
           />
 
+          <label
+            style={{
+              marginTop: "12px",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              gap: "12px",
+              padding: "12px 14px",
+              borderRadius: "10px",
+              border: `1px solid ${currentTranslation.isPublished ? "rgba(34,197,94,0.3)" : "#1c2a3d"}`,
+              background: currentTranslation.isPublished ? "rgba(34,197,94,0.08)" : "#131d2e",
+              cursor: "pointer",
+            }}
+          >
+            <span>
+              <span style={{ display: "block", fontSize: "13px", fontWeight: 700, color: "#e2e8f0" }}>
+                Ready to publish this language
+              </span>
+              <span style={{ display: "block", marginTop: "3px", fontSize: "11px", color: "#7c93b3" }}>
+                Only checked language versions go live. Unchecked versions stay as drafts.
+              </span>
+            </span>
+            <input
+              type="checkbox"
+              checked={currentTranslation.isPublished}
+              onChange={(event) => updateTranslation("isPublished", event.target.checked)}
+              style={{ width: "18px", height: "18px", accentColor: "#22c55e", flexShrink: 0 }}
+            />
+          </label>
+
           {/* Language status bar */}
           <div
             style={{
@@ -988,6 +1319,7 @@ export function BlogEditor({ blogId, initialData }: BlogEditorProps) {
               {LANGUAGES.map((lang) => {
                 const t = translations[lang.code]
                 const hasContent = !!t?.title
+                const isReady = !!t?.isPublished
                 return (
                   <div
                     key={lang.code}
@@ -1008,8 +1340,8 @@ export function BlogEditor({ blogId, initialData }: BlogEditorProps) {
                     <span style={{ fontSize: "11px", color: "#94a3b8", fontWeight: 500 }}>
                       {lang.code.toUpperCase()}
                     </span>
-                    <Badge color={hasContent ? "green" : "gray"} dot>
-                      {hasContent ? "Done" : "Empty"}
+                    <Badge color={isReady ? "green" : hasContent ? "blue" : "gray"} dot>
+                      {isReady ? "Ready" : hasContent ? "Draft" : "Empty"}
                     </Badge>
                   </div>
                 )
@@ -1153,8 +1485,8 @@ export function BlogEditor({ blogId, initialData }: BlogEditorProps) {
               label="Linked Calculator"
               value={linkedCalculatorId}
               onChange={(e) => setLinkedCalculatorId(e.target.value)}
-              options={filteredCalculatorOptions}
-              hint={loadingCalculators ? "Loading calculator list..." : "Attach this blog to a calculator for internal linking."}
+              options={calculatorOptions}
+              hint={loadingCalculators ? "Searching calculator list..." : "Attach this blog to a calculator for internal linking."}
             />
 
             <AdminInput
@@ -1162,7 +1494,9 @@ export function BlogEditor({ blogId, initialData }: BlogEditorProps) {
               value={calculatorSearch}
               onChange={(e) => setCalculatorSearch(e.target.value)}
               placeholder="Type calculator name or slug"
-              hint={`${Math.max(filteredCalculatorOptions.length - 1, 0)} calculator options visible`}
+              hint={calculatorSearchQuery
+                ? `${Math.max(calculatorOptions.length - 1, 0)} matching calculators`
+                : `${Math.max(calculatorOptions.length - 1, 0)} popular calculators loaded`}
             />
 
             <AdminInput
@@ -1228,6 +1562,50 @@ export function BlogEditor({ blogId, initialData }: BlogEditorProps) {
                 <div style={{ fontSize: "18px", fontWeight: 700, color: "#e2e8f0" }}>{currentTranslation.wordCount}</div>
                 <div style={{ fontSize: "11px", color: "#5a7090" }}>Words in {activeLanguage.toUpperCase()}</div>
               </div>
+            </div>
+          </div>
+
+          <div
+            style={{
+              background: "#131d2e",
+              borderRadius: "10px",
+              border: "1px solid #1c2a3d",
+              padding: "16px",
+            }}
+          >
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "10px", marginBottom: "12px" }}>
+              <h4 style={{ margin: 0, fontSize: "13px", fontWeight: 600, color: "#e2e8f0" }}>
+                Quality Assistant
+              </h4>
+              <Badge color={passedQualityChecks >= 7 ? "green" : passedQualityChecks >= 5 ? "blue" : "yellow"}>
+                {passedQualityChecks}/{qualityChecklist.length}
+              </Badge>
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+              {qualityChecklist.map((item) => (
+                <div
+                  key={item.label}
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "auto 1fr",
+                    gap: "8px",
+                    padding: "8px",
+                    borderRadius: "8px",
+                    background: item.pass ? "rgba(34,197,94,0.07)" : "rgba(234,179,8,0.07)",
+                    border: `1px solid ${item.pass ? "rgba(34,197,94,0.14)" : "rgba(234,179,8,0.14)"}`,
+                  }}
+                >
+                  <span style={{ width: "9px", height: "9px", borderRadius: "50%", background: item.pass ? "#22c55e" : "#eab308", marginTop: "4px" }} />
+                  <span>
+                    <span style={{ display: "block", fontSize: "12px", fontWeight: 700, color: "#cbd5e1" }}>
+                      {item.label}
+                    </span>
+                    <span style={{ display: "block", marginTop: "2px", fontSize: "11px", color: "#7c93b3", lineHeight: 1.4 }}>
+                      {item.hint}
+                    </span>
+                  </span>
+                </div>
+              ))}
             </div>
           </div>
 
@@ -1342,6 +1720,7 @@ export function BlogEditor({ blogId, initialData }: BlogEditorProps) {
               {LANGUAGES.map((lang) => {
                 const t = translations[lang.code]
                 const hasContent = !!t?.title
+                const isReady = !!t?.isPublished
                 return (
                   <div
                     key={lang.code}
@@ -1361,8 +1740,8 @@ export function BlogEditor({ blogId, initialData }: BlogEditorProps) {
                       <span style={{ fontSize: "14px" }}>{lang.flag}</span>
                       <span style={{ fontSize: "12px", color: "#94a3b8" }}>{lang.label}</span>
                     </div>
-                    <Badge color={hasContent ? "green" : "gray"}>
-                      {hasContent ? `${t.wordCount || 0}w` : "—"}
+                    <Badge color={isReady ? "green" : hasContent ? "blue" : "gray"}>
+                      {isReady ? "Ready" : hasContent ? `${t.wordCount || 0}w` : "-"}
                     </Badge>
                   </div>
                 )

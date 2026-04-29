@@ -2,6 +2,8 @@ import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import { headers } from 'next/headers';
+import DOMPurify from 'dompurify';
+import { JSDOM } from 'jsdom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -29,6 +31,42 @@ interface BlogPostPageProps {
   }>;
 }
 
+type NormalizedBlogPost = {
+  slug: string;
+  title: string;
+  description: string;
+  content: string;
+  category: string;
+  tags: string[];
+  author: {
+    name: string;
+    avatar: string;
+    bio: string;
+  };
+  publishedAt: string;
+  updatedAt?: string;
+  readingTime: number;
+  image?: string | null;
+  featured: boolean;
+  calculator: { slug: string; title: string } | null;
+  isHtml: boolean;
+};
+
+function sanitizeHtml(html: string): string {
+  try {
+    const window = new JSDOM('').window;
+    const purify = DOMPurify(window as any);
+    return purify.sanitize(html, {
+      ADD_TAGS: ['iframe'],
+      ADD_ATTR: ['allow', 'allowfullscreen', 'frameborder', 'scrolling', 'loading', 'class', 'style'],
+    });
+  } catch {
+    return html
+      .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '')
+      .replace(/on\w+="[^"]*"/gi, '');
+  }
+}
+
 export async function generateStaticParams() {
   const markdownSlugs = getAllMarkdownBlogSlugs();
   const slugs = new Set<string>([...allBlogPosts.map((p) => p.slug), ...markdownSlugs]);
@@ -41,13 +79,23 @@ export async function generateMetadata({ params }: BlogPostPageProps): Promise<M
   const prefix = language === 'en' ? '' : `/${language}`
 
   // 1. Check PostgreSQL Database first
-  const dbPost = await prisma.blogPost.findUnique({
-    where: { slug },
+  const dbPost = await prisma.blogPost.findFirst({
+    where: {
+      slug,
+      status: 'PUBLISHED',
+      translations: {
+        some: {
+          language,
+          isPublished: true,
+        },
+      },
+    },
     include: { translations: true, author: true },
   });
 
   if (dbPost) {
-    const translation = dbPost.translations.find((t) => t.language === language);
+    const translation = dbPost.translations.find((t) => t.language === language && t.isPublished);
+    if (!translation) return { title: 'Post Not Found' };
     const title = translation?.title || dbPost.slug;
     const description = translation?.metaDesc || 'Calculator Loop Blog Post';
     const keywords = dbPost.tags || [];
@@ -145,9 +193,31 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
   const withLocale = (path: string) => `${prefix}${path}`
 
   // 1. Check PostgreSQL Database first
-  const dbPost = await prisma.blogPost.findUnique({
-    where: { slug },
-    include: { translations: true, author: true },
+  const dbPost = await prisma.blogPost.findFirst({
+    where: {
+      slug,
+      status: 'PUBLISHED',
+      translations: {
+        some: {
+          language,
+          isPublished: true,
+        },
+      },
+    },
+    include: {
+      translations: true,
+      author: true,
+      calculator: {
+        select: {
+          slug: true,
+          translations: {
+            where: { language },
+            take: 1,
+            select: { title: true },
+          },
+        },
+      },
+    },
   });
 
   // 2. Fallbacks
@@ -156,10 +226,11 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
 
   if (!dbPost && !post && !md) notFound();
 
-  let normalizedPost;
+  let normalizedPost: NormalizedBlogPost;
 
   if (dbPost) {
-    const translation = dbPost.translations.find((t) => t.language === language);
+    const translation = dbPost.translations.find((t) => t.language === language && t.isPublished);
+    if (!translation) notFound();
     const content = translation?.content || 'HTML Content Missing';
     const title = translation?.title || dbPost.slug;
     const description = translation?.metaDesc || '';
@@ -181,10 +252,16 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
       readingTime: calculateReadingTime(content),
       image: dbPost.featuredImage,
       featured: false,
+      calculator: dbPost.calculator
+        ? {
+            slug: dbPost.calculator.slug,
+            title: dbPost.calculator.translations[0]?.title || dbPost.calculator.slug,
+          }
+        : null,
       isHtml: true, // DB content from Tiptap is inherently HTML
     };
   } else if (post) {
-    normalizedPost = { ...post, isHtml: false };
+    normalizedPost = { ...post, featured: post.featured ?? false, calculator: null, isHtml: false };
   } else {
     normalizedPost = {
       slug: md!.slug,
@@ -203,15 +280,66 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
       readingTime: calculateReadingTime(md!.content),
       image: md!.frontmatter.image,
       featured: false,
+      calculator: null,
       isHtml: false,
     };
   }
 
-  const relatedPosts = (post || md) ? getRelatedPosts(normalizedPost.slug, normalizedPost.category) : [];
+  const relatedWhere = []
+  if (dbPost?.linkedCalculatorId) {
+    relatedWhere.push({ linkedCalculatorId: dbPost.linkedCalculatorId })
+  }
+  if (dbPost?.category) {
+    relatedWhere.push({ category: dbPost.category })
+  }
+
+  const dbRelatedPosts = dbPost && relatedWhere.length > 0
+    ? await prisma.blogPost.findMany({
+        where: {
+          id: { not: dbPost.id },
+          status: 'PUBLISHED',
+          translations: {
+            some: {
+              language,
+              isPublished: true,
+            },
+          },
+          OR: relatedWhere,
+        },
+        include: {
+          translations: {
+            where: { language, isPublished: true },
+            take: 1,
+          },
+        },
+        orderBy: { updatedAt: 'desc' },
+        take: 3,
+      })
+    : [];
+  const relatedPosts = dbPost
+    ? dbRelatedPosts
+        .map((relatedPost) => {
+          const translation = relatedPost.translations[0];
+          if (!translation) return null;
+
+          const plainText = translation.content.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+          return {
+            slug: language === 'en' ? relatedPost.slug : translation.urlSlug,
+            title: translation.title,
+            description: translation.metaDesc || `${plainText.slice(0, 150)}${plainText.length > 150 ? '...' : ''}`,
+            category: relatedPost.category || 'general',
+            readingTime: Math.max(1, calculateReadingTime(plainText || translation.content)),
+            publishedAt: (translation.publishedAt || relatedPost.createdAt).toISOString(),
+          };
+        })
+        .filter((relatedPost): relatedPost is NonNullable<typeof relatedPost> => Boolean(relatedPost))
+    : (post || md)
+      ? getRelatedPosts(normalizedPost.slug, normalizedPost.category as Parameters<typeof getRelatedPosts>[1])
+      : [];
   const shareUrl = `https://calculatorloop.com${withLocale(`/blog/${normalizedPost.slug}`)}`;
 
   // Tiptap outputs native HTML, avoid replacing \n globally with <br/> for DB entries 
-  const rawHtml = normalizedPost.isHtml ? normalizedPost.content : normalizedPost.content.replace(/\n/g, '<br />');
+  const rawHtml = normalizedPost.isHtml ? sanitizeHtml(normalizedPost.content) : normalizedPost.content.replace(/\n/g, '<br />');
   
   const localizedHtml = prefix
     ? rawHtml.replace(/(href|src)="\/(?!\/)/g, `$1="${prefix}/`)
@@ -292,6 +420,32 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
             prose-li:my-1"
           dangerouslySetInnerHTML={{ __html: localizedHtml }}
         />
+
+        {normalizedPost.calculator && (
+          <>
+            <Separator className="my-12" />
+            <Card className="border-primary/20 bg-primary/5">
+              <CardContent className="p-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <h3 className="text-xl font-bold">
+                    {normalizedPost.calculator.title}
+                  </h3>
+                  <p className="mt-2 text-muted-foreground">
+                    Put this guide into practice with the linked calculator.
+                  </p>
+                </div>
+                <div className="flex flex-wrap gap-3">
+                  <Link href={withLocale(`/calculator/${normalizedPost.calculator.slug}`)}>
+                    <Button size="lg">Use Calculator</Button>
+                  </Link>
+                  <Link href={withLocale(`/calculator/${normalizedPost.calculator.slug}/guides`)}>
+                    <Button size="lg" variant="outline">View all guides</Button>
+                  </Link>
+                </div>
+              </CardContent>
+            </Card>
+          </>
+        )}
 
         <Separator className="my-12" />
 

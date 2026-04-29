@@ -295,7 +295,7 @@ export async function POST(request: NextRequest) {
             metaDesc: t.metaDesc,
             urlSlug: t.urlSlug,
             isPublished: t.isPublished,
-            publishedAt: t.isPublished ? new Date() : null,
+            publishedAt: t.isPublished && (status || "DRAFT") === "PUBLISHED" ? new Date() : null,
             wordCount: t.wordCount,
           })),
         },

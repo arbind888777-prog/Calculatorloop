@@ -2,7 +2,6 @@ import { NextResponse } from "next/server"
 import { requireAdmin } from "@/lib/adminGuard"
 import { prisma } from "@/lib/prisma"
 import { toolsData } from "@/lib/toolsData"
-import { slugify } from "@/lib/utils" // Assume there's a slugify, or we can use the keys directly
 
 export async function POST(req: Request) {
   try {

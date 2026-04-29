@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { Calculator, Github, Twitter, Mail, Heart } from "lucide-react"
+import { Calculator, Github, Twitter, Mail } from "lucide-react"
 import { useSettings } from "@/components/providers/SettingsProvider"
 import { getMergedTranslations } from "@/lib/translations"
 import NewsletterSignup from "@/components/email/NewsletterSignup"
@@ -11,7 +11,7 @@ export function Footer() {
   const t = getMergedTranslations(language)
   const currentYear = new Date().getFullYear()
 
-  const prefix = language === 'en' ? '' : `/${language}`
+  const prefix = language === "en" ? "" : `/${language}`
   const withLocale = (path: string) => `${prefix}${path}`
 
   const footerLinks = {
@@ -32,22 +32,19 @@ export function Footer() {
   return (
     <footer className="w-full border-t border-border/40 bg-background">
       <div className="container mx-auto px-4 py-12">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-8">
-          {/* Brand */}
+        <div className="grid grid-cols-1 gap-8 md:grid-cols-2 lg:grid-cols-5">
           <div className="space-y-4 lg:col-span-2">
-            <Link href={withLocale("/")} className="flex items-center gap-2 font-bold text-xl text-primary">
+            <Link href={withLocale("/")} className="flex items-center gap-2 text-xl font-bold text-primary">
               <Calculator className="h-6 w-6" />
-              <span>Calculator Hub</span>
+              <span>Calculator Loop</span>
             </Link>
-            <p className="text-sm text-muted-foreground">
-              {t.footer.tagline}
-            </p>
+            <p className="text-sm text-muted-foreground">{t.footer.tagline}</p>
             <div className="flex gap-3">
               <a
                 href="https://github.com"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="h-9 w-9 rounded-lg bg-secondary hover:bg-secondary/80 flex items-center justify-center transition-colors"
+                className="flex h-9 w-9 items-center justify-center rounded-lg bg-secondary transition-colors hover:bg-secondary/80"
               >
                 <Github className="h-4 w-4" />
               </a>
@@ -55,34 +52,29 @@ export function Footer() {
                 href="https://twitter.com"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="h-9 w-9 rounded-lg bg-secondary hover:bg-secondary/80 flex items-center justify-center transition-colors"
+                className="flex h-9 w-9 items-center justify-center rounded-lg bg-secondary transition-colors hover:bg-secondary/80"
               >
                 <Twitter className="h-4 w-4" />
               </a>
               <a
-                href="mailto:contact@calculatorhub.com"
-                className="h-9 w-9 rounded-lg bg-secondary hover:bg-secondary/80 flex items-center justify-center transition-colors"
+                href="mailto:contact@calculatorloop.com"
+                className="flex h-9 w-9 items-center justify-center rounded-lg bg-secondary transition-colors hover:bg-secondary/80"
               >
                 <Mail className="h-4 w-4" />
               </a>
             </div>
-            
-            {/* Newsletter Signup */}
+
             <div className="pt-2">
               <NewsletterSignup variant="footer" />
             </div>
           </div>
 
-          {/* Resources */}
           <div className="space-y-4">
-            <h3 className="font-semibold text-sm">{t.footer.resources}</h3>
+            <h3 className="text-sm font-semibold">{t.footer.resources}</h3>
             <ul className="space-y-2">
               {footerLinks.resources.map((link) => (
                 <li key={link.href}>
-                  <Link
-                    href={link.href}
-                    className="text-sm text-muted-foreground hover:text-foreground transition-colors"
-                  >
+                  <Link href={link.href} className="text-sm text-muted-foreground transition-colors hover:text-foreground">
                     {link.label}
                   </Link>
                 </li>
@@ -90,16 +82,12 @@ export function Footer() {
             </ul>
           </div>
 
-          {/* Company */}
           <div className="space-y-4">
-            <h3 className="font-semibold text-sm">{t.footer.company}</h3>
+            <h3 className="text-sm font-semibold">{t.footer.company}</h3>
             <ul className="space-y-2">
               {footerLinks.company.map((link) => (
                 <li key={link.href}>
-                  <Link
-                    href={link.href}
-                    className="text-sm text-muted-foreground hover:text-foreground transition-colors"
-                  >
+                  <Link href={link.href} className="text-sm text-muted-foreground transition-colors hover:text-foreground">
                     {link.label}
                   </Link>
                 </li>
@@ -108,13 +96,9 @@ export function Footer() {
           </div>
         </div>
 
-        {/* Bottom Bar */}
-        <div className="mt-12 pt-8 border-t border-border/40 flex flex-col sm:flex-row justify-between items-center gap-4">
-          <p className="text-sm text-muted-foreground text-center sm:text-left">
-            © {currentYear} Calculator Hub. {t.footer.rights}
-          </p>
-          <p className="text-sm text-muted-foreground flex items-center gap-1">
-            Made with <Heart className="h-4 w-4 text-red-500 fill-red-500" /> by Your Team
+        <div className="mt-12 flex items-center justify-center border-t border-border/40 pt-8">
+          <p className="text-center text-sm text-muted-foreground">
+            &copy; {currentYear} Calculator Loop. {t.footer.rights}
           </p>
         </div>
       </div>

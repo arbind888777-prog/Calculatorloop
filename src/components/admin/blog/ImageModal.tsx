@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useCallback, useRef } from "react"
+import { useState, useCallback, useRef, useEffect } from "react"
 
 interface ImageModalProps {
   isOpen: boolean
@@ -8,7 +8,15 @@ interface ImageModalProps {
   onInsert: (url: string, alt?: string) => void
 }
 
-type TabType = "upload" | "url"
+type TabType = "upload" | "url" | "library"
+
+interface MediaAsset {
+  id: string
+  publicId: string
+  url: string
+  width?: number
+  height?: number
+}
 
 export function ImageModal({ isOpen, onClose, onInsert }: ImageModalProps) {
   const [activeTab, setActiveTab] = useState<TabType>("upload")
@@ -19,6 +27,9 @@ export function ImageModal({ isOpen, onClose, onInsert }: ImageModalProps) {
   const [altText, setAltText] = useState("")
   const [error, setError] = useState("")
   const [isDragging, setIsDragging] = useState(false)
+  const [mediaAssets, setMediaAssets] = useState<MediaAsset[]>([])
+  const [loadingLibrary, setLoadingLibrary] = useState(false)
+  const [librarySearch, setLibrarySearch] = useState("")
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const resetState = useCallback(() => {
@@ -29,7 +40,31 @@ export function ImageModal({ isOpen, onClose, onInsert }: ImageModalProps) {
     setUploading(false)
     setUploadProgress(0)
     setIsDragging(false)
+    setLibrarySearch("")
   }, [])
+
+  const loadMediaLibrary = useCallback(async (search = "") => {
+    setLoadingLibrary(true)
+    setError("")
+    try {
+      const params = new URLSearchParams({ limit: "30" })
+      if (search.trim()) params.set("search", search.trim())
+      const res = await fetch(`/api/admin/media?${params}`)
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || "Failed to load media library")
+      setMediaAssets(data.assets || [])
+    } catch (err: any) {
+      setError(err.message || "Failed to load media library")
+    } finally {
+      setLoadingLibrary(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    if (isOpen && activeTab === "library") {
+      loadMediaLibrary(librarySearch)
+    }
+  }, [activeTab, isOpen, librarySearch, loadMediaLibrary])
 
   const handleClose = () => {
     resetState()
@@ -220,8 +255,9 @@ export function ImageModal({ isOpen, onClose, onInsert }: ImageModalProps) {
         >
           {(
             [
-              { key: "upload", icon: "⬆️", label: "Upload" },
-              { key: "url", icon: "🔗", label: "From URL" },
+              { key: "upload", label: "Upload" },
+              { key: "library", label: "Library" },
+              { key: "url", label: "From URL" },
             ] as const
           ).map((tab) => (
             <button
@@ -249,7 +285,6 @@ export function ImageModal({ isOpen, onClose, onInsert }: ImageModalProps) {
                 gap: "6px",
               }}
             >
-              <span style={{ fontSize: "14px" }}>{tab.icon}</span>
               {tab.label}
             </button>
           ))}
@@ -420,6 +455,89 @@ export function ImageModal({ isOpen, onClose, onInsert }: ImageModalProps) {
                   Preview
                 </button>
               </div>
+            </div>
+          )}
+
+          {activeTab === "library" && (
+            <div>
+              <div style={{ display: "flex", gap: "8px", marginBottom: "12px" }}>
+                <input
+                  type="search"
+                  value={librarySearch}
+                  onChange={(e) => setLibrarySearch(e.target.value)}
+                  placeholder="Search uploaded images"
+                  style={{
+                    flex: 1,
+                    padding: "10px 14px",
+                    background: "#131d2e",
+                    border: "1px solid #1c2a3d",
+                    borderRadius: "8px",
+                    color: "#e2e8f0",
+                    fontSize: "13px",
+                    outline: "none",
+                    fontFamily: "inherit",
+                  }}
+                />
+                <button
+                  type="button"
+                  onClick={() => loadMediaLibrary(librarySearch)}
+                  style={{
+                    padding: "10px 14px",
+                    borderRadius: "8px",
+                    border: "1px solid rgba(59,130,246,0.2)",
+                    background: "rgba(59,130,246,0.12)",
+                    color: "#60a5fa",
+                    fontSize: "12px",
+                    fontWeight: 700,
+                    cursor: "pointer",
+                    fontFamily: "inherit",
+                  }}
+                >
+                  Refresh
+                </button>
+              </div>
+
+              {loadingLibrary ? (
+                <p style={{ color: "#7c93b3", fontSize: "12px", margin: "20px 0", textAlign: "center" }}>
+                  Loading media library...
+                </p>
+              ) : mediaAssets.length === 0 ? (
+                <p style={{ color: "#7c93b3", fontSize: "12px", margin: "20px 0", textAlign: "center" }}>
+                  No uploaded images found yet.
+                </p>
+              ) : (
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(110px, 1fr))", gap: "10px" }}>
+                  {mediaAssets.map((asset) => (
+                    <button
+                      type="button"
+                      key={asset.id}
+                      onClick={() => {
+                        setImageUrl(asset.url)
+                        setPreviewUrl(asset.url)
+                        setAltText(asset.publicId.split("/").pop()?.replace(/[-_]/g, " ") || "")
+                      }}
+                      style={{
+                        padding: "6px",
+                        borderRadius: "10px",
+                        border: imageUrl === asset.url ? "2px solid #60a5fa" : "1px solid #1c2a3d",
+                        background: "#131d2e",
+                        cursor: "pointer",
+                        textAlign: "left",
+                      }}
+                    >
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={asset.url}
+                        alt=""
+                        style={{ width: "100%", aspectRatio: "1 / 1", objectFit: "cover", borderRadius: "7px", display: "block" }}
+                      />
+                      <span style={{ display: "block", marginTop: "5px", color: "#7c93b3", fontSize: "10px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                        {asset.publicId.split("/").pop()}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
           )}
 

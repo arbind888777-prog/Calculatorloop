@@ -174,6 +174,7 @@ function ToolbarSelect({
 export function EditorToolbar({ editor, onOpenImageModal, onOpenVideoModal }: ToolbarProps) {
   const [showLinkInput, setShowLinkInput] = useState(false)
   const [linkUrl, setLinkUrl] = useState("")
+  const [hasRememberedTextSelection, setHasRememberedTextSelection] = useState(false)
   const imageSelected = editor.isActive("image")
   const lastTextSelectionRef = useRef<TextSelectionRange | null>(null)
   const getCurrentTextSelection = () => {
@@ -196,7 +197,7 @@ export function EditorToolbar({ editor, onOpenImageModal, onOpenVideoModal }: To
   }
 
   const activeTextSelection = getCurrentTextSelection()
-  const canEditText = Boolean(activeTextSelection || lastTextSelectionRef.current)
+  const canEditText = Boolean(activeTextSelection || hasRememberedTextSelection)
   const currentTextStyle = editor.getAttributes("textStyle") as {
     color?: string | null
     fontSize?: string | null
@@ -214,6 +215,7 @@ export function EditorToolbar({ editor, onOpenImageModal, onOpenVideoModal }: To
       const range = getCurrentTextSelection()
       if (range) {
         lastTextSelectionRef.current = range
+        setHasRememberedTextSelection(true)
       }
     }
 

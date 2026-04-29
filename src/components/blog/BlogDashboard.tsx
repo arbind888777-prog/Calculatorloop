@@ -2,6 +2,7 @@
 
 import Link from 'next/link'
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { 
   ChevronRight, DollarSign, Heart, Binary, Wrench, Briefcase, Home, GraduationCap, Calendar, Laptop, FlaskConical, ChevronDown,
   TrendingUp, Building, BookOpen, Banknote, Receipt, User, Search, X, Clock, ArrowRight, Filter, Star, ChevronLeft
@@ -33,6 +34,8 @@ type DashboardSubcategory = {
   key: string
   name: string
   calculators: DashboardTool[]
+  toolIds: string[]
+  postCount: number
 }
 
 const FINANCIAL_SUBCATEGORY_ORDER: string[] = [
@@ -45,6 +48,44 @@ const POPULAR_FINANCIAL_POSTS_BY_TOOL_ID: string[] = [
   'personal-loan-emi', 'savings-account-interest', 'life-insurance-calculator',
   'rent-vs-buy', 'credit-card-payoff', 'fire-calculator', 'profit-margin', 'net-worth',
 ]
+
+const DISCOVERY_FILTERS = [
+  { id: 'all', label: 'All' },
+  { id: 'beginner', label: 'Beginner' },
+  { id: 'how-to', label: 'How-to' },
+  { id: 'example', label: 'Examples' },
+  { id: 'faq', label: 'FAQ' },
+] as const
+
+type DiscoveryFilterId = (typeof DISCOVERY_FILTERS)[number]['id']
+const POSTS_PER_PAGE = 12
+
+function matchesDiscoveryFilter(post: DashboardPost, filterId: DiscoveryFilterId) {
+  if (filterId === 'all') return true
+
+  const title = post.title.toLowerCase()
+  const description = post.description.toLowerCase()
+  const tags = post.tags.map((tag) => tag.toLowerCase())
+  const text = `${title} ${description} ${tags.join(' ')}`
+
+  if (filterId === 'beginner') {
+    return ['beginner', 'basics', 'start', 'introduction', 'guide'].some((term) => text.includes(term))
+  }
+
+  if (filterId === 'how-to') {
+    return ['how-to', 'how to', 'tutorial', 'steps', 'use'].some((term) => text.includes(term))
+  }
+
+  if (filterId === 'example') {
+    return ['example', 'sample', 'case study', 'scenario'].some((term) => text.includes(term))
+  }
+
+  if (filterId === 'faq') {
+    return ['faq', 'frequently asked', 'questions'].some((term) => text.includes(term))
+  }
+
+  return true
+}
 
 /* ─── Shared Post Card ─── */
 function PostCard({ post, withLocale, categoryMeta, compact }: {
@@ -121,6 +162,9 @@ function PostCard({ post, withLocale, categoryMeta, compact }: {
 export function BlogDashboard({ posts, language, dict }: BlogDashboardProps) {
   const prefix = language && language !== 'en' ? `/${language}` : ''
   const withLocale = (path: string) => `${prefix}${path}`
+  const router = useRouter()
+  const pathname = usePathname()
+  const searchParams = useSearchParams()
 
   // Desktop dashboard should scroll inside panels (not the whole page).
   useEffect(() => {
@@ -142,6 +186,9 @@ export function BlogDashboard({ posts, language, dict }: BlogDashboardProps) {
   const [searchQuery, setSearchQuery] = useState('')
   const [searchFocused, setSearchFocused] = useState(false)
   const searchRef = useRef<HTMLInputElement>(null)
+  const [activeDiscoveryFilter, setActiveDiscoveryFilter] = useState<DiscoveryFilterId>('all')
+  const [currentPage, setCurrentPage] = useState(1)
+  const hasHydratedUrlState = useRef(false)
 
   /* ─── Mobile category sheet ─── */
   const [mobileFilterOpen, setMobileFilterOpen] = useState(false)
@@ -190,17 +237,14 @@ export function BlogDashboard({ posts, language, dict }: BlogDashboardProps) {
       .filter((id) => id !== 'all' && id !== 'latest')
       .filter((id) => Boolean((toolsData as any)[id]) && Boolean((categoryMeta as any)[id]))
       .map((id) => {
-        const category = (toolsData as any)[id]
-        const calculators = Object.values(category.subcategories ?? {}).flatMap((sub: any) =>
-          (sub.calculators ?? [])
-        )
         const meta = (categoryMeta as any)[id]
+        const count = posts.filter((post) => post.category === id).length
         return {
           id,
           name: meta?.name as string || id,
           icon: meta?.icon || BookOpen,
           color: meta?.color || 'from-primary/20 to-primary/10',
-          count: calculators.length,
+          count,
           isSpecial: false
         }
       })
@@ -219,6 +263,7 @@ export function BlogDashboard({ posts, language, dict }: BlogDashboardProps) {
   const selectCategory = (id: string) => {
     setActiveCategoryId(id)
     setSearchQuery('')
+    setCurrentPage(1)
     if (id === 'all') {
       setActiveSubcategoryKey(null)
       setExpandedCategoryId(null)
@@ -235,6 +280,7 @@ export function BlogDashboard({ posts, language, dict }: BlogDashboardProps) {
     
     const category = (toolsData as any)[activeCategoryId]
     if (!category) return []
+    const categoryPosts = posts.filter((post) => post.category === activeCategoryId) as DashboardPost[]
 
     const subcategoryList: DashboardSubcategory[] = Object.entries(category.subcategories ?? {})
       .map(([key, sub]: any) => {
@@ -244,14 +290,21 @@ export function BlogDashboard({ posts, language, dict }: BlogDashboardProps) {
             title: localizeToolMeta({ dict, toolId: String(tool.id), fallbackTitle: String(tool.title) }).title,
             description: String(tool.description),
           }))
+        const toolIds = calculators.map((tool) => tool.id)
+        const toolIdSet = new Set(toolIds)
+        const postCount = categoryPosts.filter((post) =>
+          post.subcategoryKey === String(key) || (post.toolId ? toolIdSet.has(post.toolId) : false)
+        ).length
 
         return { 
           key: String(key), 
           name: localizeSubcategoryName(dict, String(key), String(sub.name)), 
-          calculators 
+          calculators,
+          toolIds,
+          postCount,
         }
       })
-      .filter((s) => s.calculators.length > 0)
+      .filter((s) => s.calculators.length > 0 && s.postCount > 0)
       
     if (activeCategoryId === 'financial') {
       const byKey = new Map(subcategoryList.map(s => [s.key, s]))
@@ -261,7 +314,7 @@ export function BlogDashboard({ posts, language, dict }: BlogDashboardProps) {
     }
 
     return subcategoryList
-  }, [activeCategoryId, dict])
+  }, [activeCategoryId, dict, posts])
 
   const selectedSubcategory = useMemo(() => {
     if (!activeSubcategoryKey) return null
@@ -296,7 +349,13 @@ export function BlogDashboard({ posts, language, dict }: BlogDashboardProps) {
     } else if (!activeSubcategoryKey) {
       result = posts.filter((p) => p.category === activeCategoryId) as DashboardPost[]
     } else {
-      result = posts.filter((p) => p.category === activeCategoryId && (p as DashboardPost).subcategoryKey === activeSubcategoryKey) as DashboardPost[]
+      const selectedSubcategoryToolIds = new Set(selectedSubcategory?.toolIds || [])
+      result = posts.filter((p) =>
+        p.category === activeCategoryId && (
+          (p as DashboardPost).subcategoryKey === activeSubcategoryKey ||
+          ((p as DashboardPost).toolId ? selectedSubcategoryToolIds.has((p as DashboardPost).toolId as string) : false)
+        )
+      ) as DashboardPost[]
     }
 
     if (searchQuery.trim()) {
@@ -308,8 +367,77 @@ export function BlogDashboard({ posts, language, dict }: BlogDashboardProps) {
         p.category.toLowerCase().includes(q)
       )
     }
+
+    result = result.filter((post) => matchesDiscoveryFilter(post, activeDiscoveryFilter))
     return result
-  }, [posts, activeCategoryId, activeSubcategoryKey, searchQuery])
+  }, [posts, activeCategoryId, activeDiscoveryFilter, activeSubcategoryKey, searchQuery, selectedSubcategory])
+
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [activeCategoryId, activeDiscoveryFilter, activeSubcategoryKey, searchQuery])
+
+  useEffect(() => {
+    const urlCategory = searchParams.get('category') || 'all'
+    const urlSubcategory = searchParams.get('subcategory')
+    const urlQuery = searchParams.get('q') || ''
+    const rawFilter = searchParams.get('filter') || 'all'
+    const urlFilter = DISCOVERY_FILTERS.some((item) => item.id === rawFilter)
+      ? rawFilter as DiscoveryFilterId
+      : 'all'
+    const parsedPage = Number.parseInt(searchParams.get('page') || '1', 10)
+    const urlPage = Number.isFinite(parsedPage) && parsedPage > 0 ? parsedPage : 1
+
+    setSearchQuery((current) => current === urlQuery ? current : urlQuery)
+    setActiveDiscoveryFilter((current) => current === urlFilter ? current : urlFilter)
+    setActiveCategoryId((current) => current === urlCategory ? current : urlCategory)
+    setExpandedCategoryId((current) => {
+      if (urlCategory === 'all' || urlCategory === 'latest') return null
+      return current === urlCategory ? current : urlCategory
+    })
+    setActiveSubcategoryKey((current) => current === (urlSubcategory || null) ? current : (urlSubcategory || null))
+    setCurrentPage((current) => current === urlPage ? current : urlPage)
+
+    hasHydratedUrlState.current = true
+  }, [searchParams])
+
+  const totalPages = Math.max(1, Math.ceil(filteredPosts.length / POSTS_PER_PAGE))
+  const paginatedPosts = useMemo(() => {
+    const start = (currentPage - 1) * POSTS_PER_PAGE
+    return filteredPosts.slice(start, start + POSTS_PER_PAGE)
+  }, [currentPage, filteredPosts])
+
+  useEffect(() => {
+    if (currentPage > totalPages) {
+      setCurrentPage(totalPages)
+    }
+  }, [currentPage, totalPages])
+
+  useEffect(() => {
+    if (!hasHydratedUrlState.current) return
+
+    const params = new URLSearchParams(searchParams.toString())
+
+    if (searchQuery.trim()) params.set('q', searchQuery.trim())
+    else params.delete('q')
+
+    if (activeCategoryId !== 'all') params.set('category', activeCategoryId)
+    else params.delete('category')
+
+    if (activeSubcategoryKey) params.set('subcategory', activeSubcategoryKey)
+    else params.delete('subcategory')
+
+    if (activeDiscoveryFilter !== 'all') params.set('filter', activeDiscoveryFilter)
+    else params.delete('filter')
+
+    if (currentPage > 1) params.set('page', String(currentPage))
+    else params.delete('page')
+
+    const query = params.toString()
+    const currentQuery = searchParams.toString()
+    if (query === currentQuery) return
+
+    router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false })
+  }, [activeCategoryId, activeDiscoveryFilter, activeSubcategoryKey, currentPage, pathname, router, searchParams, searchQuery])
 
   /* ─── Breadcrumb ─── */
   const breadcrumbs = useMemo(() => {
@@ -354,6 +482,57 @@ export function BlogDashboard({ posts, language, dict }: BlogDashboardProps) {
       )}
     </div>
   )
+
+  const discoveryFilterBar = (
+    <div className="flex flex-wrap gap-2">
+      {DISCOVERY_FILTERS.map((filter) => {
+        const isActive = activeDiscoveryFilter === filter.id
+        return (
+          <button
+            key={filter.id}
+            type="button"
+            onClick={() => setActiveDiscoveryFilter(filter.id)}
+            className={
+              "rounded-full border px-3 py-1.5 text-xs font-medium transition-all " +
+              (isActive
+                ? "border-primary/40 bg-primary/10 text-primary"
+                : "border-border/60 bg-secondary/40 text-muted-foreground hover:border-primary/20 hover:text-foreground")
+            }
+          >
+            {filter.label}
+          </button>
+        )
+      })}
+    </div>
+  )
+
+  const paginationControls = totalPages > 1 ? (
+    <div className="flex items-center justify-between gap-3 border-t border-border/40 pt-4">
+      <p className="text-xs text-muted-foreground">
+        Page {currentPage} of {totalPages}
+      </p>
+      <div className="flex items-center gap-2">
+        <button
+          type="button"
+          onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
+          disabled={currentPage === 1}
+          className="inline-flex items-center gap-1 rounded-lg border border-border/60 px-3 py-2 text-xs font-medium text-foreground transition-colors hover:border-primary/30 hover:text-primary disabled:cursor-not-allowed disabled:opacity-40"
+        >
+          <ChevronLeft className="h-3.5 w-3.5" />
+          Prev
+        </button>
+        <button
+          type="button"
+          onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))}
+          disabled={currentPage === totalPages}
+          className="inline-flex items-center gap-1 rounded-lg border border-border/60 px-3 py-2 text-xs font-medium text-foreground transition-colors hover:border-primary/30 hover:text-primary disabled:cursor-not-allowed disabled:opacity-40"
+        >
+          Next
+          <ChevronRight className="h-3.5 w-3.5" />
+        </button>
+      </div>
+    </div>
+  ) : null
 
   return (
     <div className="bg-background min-h-screen">
@@ -505,7 +684,7 @@ export function BlogDashboard({ posts, language, dict }: BlogDashboardProps) {
           )}
 
           {/* Category overview on "All" */}
-          {activeCategoryId === 'all' && !searchQuery && (
+          {activeCategoryId === 'all' && !searchQuery && activeDiscoveryFilter === 'all' && (
             <div className="grid grid-cols-2 gap-3 mb-6">
               {categories.filter((c) => c.id !== 'all' && c.id !== 'latest' && c.count > 0).map((c) => {
                 const CategoryIcon = c.icon || BookOpen
@@ -529,6 +708,10 @@ export function BlogDashboard({ posts, language, dict }: BlogDashboardProps) {
               })}
             </div>
           )}
+
+          <div className="mb-4">
+            {discoveryFilterBar}
+          </div>
 
           {/* Subcategory pills (mobile) */}
           {activeSubcategories.length > 0 && activeCategoryId !== 'all' && (
@@ -558,7 +741,7 @@ export function BlogDashboard({ posts, language, dict }: BlogDashboardProps) {
                         : "bg-secondary/50 text-muted-foreground")
                     }
                   >
-                    {sub.name} ({sub.calculators.length})
+                    {sub.name} ({sub.postCount})
                   </button>
                 ))}
               </div>
@@ -566,14 +749,17 @@ export function BlogDashboard({ posts, language, dict }: BlogDashboardProps) {
           )}
 
           {/* Search results info */}
-          {searchQuery && (
+          {(searchQuery || activeDiscoveryFilter !== 'all') && (
             <div className="flex items-center justify-between mb-4 px-1">
               <p className="text-sm text-muted-foreground">
-                {filteredPosts.length} result{filteredPosts.length !== 1 ? 's' : ''} for &ldquo;{searchQuery}&rdquo;
+                {filteredPosts.length} result{filteredPosts.length !== 1 ? 's' : ''}{searchQuery ? ` for "${searchQuery}"` : ` in ${DISCOVERY_FILTERS.find((item) => item.id === activeDiscoveryFilter)?.label || 'All'}`}
               </p>
               <button
                 type="button"
-                onClick={() => setSearchQuery('')}
+                onClick={() => {
+                  setSearchQuery('')
+                  setActiveDiscoveryFilter('all')
+                }}
                 className="text-xs text-primary hover:underline"
               >
                 Clear
@@ -583,7 +769,7 @@ export function BlogDashboard({ posts, language, dict }: BlogDashboardProps) {
 
           {/* Mobile post cards */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            {filteredPosts.map((post) => (
+            {paginatedPosts.map((post) => (
               <PostCard
                 key={post.slug}
                 post={post}
@@ -594,16 +780,22 @@ export function BlogDashboard({ posts, language, dict }: BlogDashboardProps) {
             ))}
           </div>
 
-          {filteredPosts.length === 0 && (
+          {paginationControls && (
+            <div className="mt-4">
+              {paginationControls}
+            </div>
+          )}
+
+          {filteredPosts.length === 0 && (activeCategoryId !== 'all' || searchQuery || activeDiscoveryFilter !== 'all') && (
             <div className="py-16 text-center space-y-3">
               <div className="w-16 h-16 mx-auto rounded-full bg-secondary/50 flex items-center justify-center">
                 <Search className="h-7 w-7 text-muted-foreground/50" />
               </div>
               <p className="text-muted-foreground font-medium">
-                {searchQuery ? 'No articles found' : 'No posts in this category'}
+                {searchQuery || activeDiscoveryFilter !== 'all' ? 'No articles found' : 'No posts in this category'}
               </p>
               <p className="text-sm text-muted-foreground/70">
-                {searchQuery ? 'Try different keywords or clear your search' : 'Check back later for new content'}
+                {searchQuery || activeDiscoveryFilter !== 'all' ? 'Try different keywords or clear your search' : 'Check back later for new content'}
               </p>
             </div>
           )}
@@ -722,7 +914,7 @@ export function BlogDashboard({ posts, language, dict }: BlogDashboardProps) {
                                         "ml-2 shrink-0 rounded-full px-1.5 py-0 text-[10px] " +
                                         (isSubActive ? 'bg-primary/20 text-primary' : 'bg-secondary/80 text-muted-foreground')
                                       }>
-                                        {sub.calculators.length}
+                                        {sub.postCount}
                                       </span>
                                     </button>
                                     
@@ -789,18 +981,25 @@ export function BlogDashboard({ posts, language, dict }: BlogDashboardProps) {
                       {searchBar}
                     </div>
                   </div>
+
+                  <div>
+                    {discoveryFilterBar}
+                  </div>
                 </div>
 
                 <div className="px-6 py-6">
                   {/* Search results info */}
-                  {searchQuery && (
+                  {(searchQuery || activeDiscoveryFilter !== 'all') && (
                     <div className="flex items-center justify-between mb-4">
                       <p className="text-sm text-muted-foreground">
-                        {filteredPosts.length} result{filteredPosts.length !== 1 ? 's' : ''} for &ldquo;{searchQuery}&rdquo;
+                        {filteredPosts.length} result{filteredPosts.length !== 1 ? 's' : ''}{searchQuery ? ` for "${searchQuery}"` : ` in ${DISCOVERY_FILTERS.find((item) => item.id === activeDiscoveryFilter)?.label || 'All'}`}
                       </p>
                       <button
                         type="button"
-                        onClick={() => setSearchQuery('')}
+                        onClick={() => {
+                          setSearchQuery('')
+                          setActiveDiscoveryFilter('all')
+                        }}
                         className="text-xs text-primary hover:underline"
                       >
                         Clear search
@@ -809,7 +1008,7 @@ export function BlogDashboard({ posts, language, dict }: BlogDashboardProps) {
                   )}
 
                   {/* Category grid (when "All" selected and no search) */}
-                  {activeCategoryId === 'all' && !searchQuery && (
+                  {activeCategoryId === 'all' && !searchQuery && activeDiscoveryFilter === 'all' && (
                     <div className="grid grid-cols-2 xl:grid-cols-3 gap-4 mb-8">
                       {categories.filter((c) => c.id !== 'all' && c.id !== 'latest' && c.count > 0).map((c) => {
                         const CategoryIcon = c.icon || BookOpen
@@ -843,16 +1042,19 @@ export function BlogDashboard({ posts, language, dict }: BlogDashboardProps) {
                   )}
 
                   {/* All posts (when "All" selected with search active) OR Latest */}
-                  {((activeCategoryId === 'all' && searchQuery) || activeCategoryId === 'latest') && (
-                    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-                      {filteredPosts.map((post) => (
-                        <PostCard key={post.slug} post={post} withLocale={withLocale} categoryMeta={categoryMeta} />
-                      ))}
+                  {((activeCategoryId === 'all' && (searchQuery || activeDiscoveryFilter !== 'all')) || activeCategoryId === 'latest') && (
+                    <div className="space-y-4">
+                      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                        {paginatedPosts.map((post) => (
+                          <PostCard key={post.slug} post={post} withLocale={withLocale} categoryMeta={categoryMeta} />
+                        ))}
+                      </div>
+                      {paginationControls}
                     </div>
                   )}
 
                   {/* Recent posts under all categories */}
-                  {activeCategoryId === 'all' && !searchQuery && (
+                  {activeCategoryId === 'all' && !searchQuery && activeDiscoveryFilter === 'all' && (
                     <div className="space-y-4">
                       <div className="flex items-center justify-between">
                         <h3 className="text-base font-bold">{dict.blog?.latestArticles || 'Latest Articles'}</h3>
@@ -871,7 +1073,7 @@ export function BlogDashboard({ posts, language, dict }: BlogDashboardProps) {
                   {/* Category selected - show posts */}
                   {activeCategoryId !== 'all' && activeCategoryId !== 'latest' && (
                     <div className="space-y-4">
-                      {!searchQuery && !selectedSubcategory && (
+                      {!searchQuery && !selectedSubcategory && activeDiscoveryFilter === 'all' && (
                         <div className="flex items-center justify-between">
                           <h3 className="text-sm font-semibold text-muted-foreground">
                             {dict.blog?.popularPosts || 'Popular posts'}
@@ -883,7 +1085,7 @@ export function BlogDashboard({ posts, language, dict }: BlogDashboardProps) {
                       )}
 
                       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-                        {(selectedSubcategory || searchQuery ? filteredPosts : categoryPopularPosts).map((post) => (
+                        {(selectedSubcategory || searchQuery || activeDiscoveryFilter !== 'all' ? paginatedPosts : categoryPopularPosts).map((post) => (
                           <PostCard key={post.slug} post={post} withLocale={withLocale} categoryMeta={categoryMeta} />
                         ))}
                       </div>
@@ -893,20 +1095,22 @@ export function BlogDashboard({ posts, language, dict }: BlogDashboardProps) {
                           {dict.blog?.selectSubcategory || 'Select a subcategory from the sidebar to see all posts'}
                         </p>
                       )}
+
+                      {(selectedSubcategory || searchQuery || activeDiscoveryFilter !== 'all') && paginationControls}
                     </div>
                   )}
 
                   {/* Empty state */}
-                  {filteredPosts.length === 0 && (activeCategoryId !== 'all' || searchQuery) && (
+                  {filteredPosts.length === 0 && (activeCategoryId !== 'all' || searchQuery || activeDiscoveryFilter !== 'all') && (
                     <div className="py-16 text-center space-y-3">
                       <div className="w-16 h-16 mx-auto rounded-full bg-secondary/50 flex items-center justify-center">
                         <Search className="h-7 w-7 text-muted-foreground/50" />
                       </div>
                       <p className="text-muted-foreground font-medium">
-                        {searchQuery ? 'No articles found' : 'No posts in this category'}
+                        {searchQuery || activeDiscoveryFilter !== 'all' ? 'No articles found' : 'No posts in this category'}
                       </p>
                       <p className="text-sm text-muted-foreground/70">
-                        {searchQuery ? 'Try different keywords or clear your search' : 'Check back later for new content'}
+                        {searchQuery || activeDiscoveryFilter !== 'all' ? 'Try different keywords or clear your search' : 'Check back later for new content'}
                       </p>
                     </div>
                   )}

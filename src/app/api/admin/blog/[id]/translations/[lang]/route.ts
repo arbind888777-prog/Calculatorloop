@@ -17,6 +17,16 @@ export async function PUT(request: NextRequest, { params }: Params) {
     const { id, lang } = await params
     const body = await request.json()
     const { title, content, metaTitle, metaDesc, urlSlug, isPublished, wordCount } = body
+    const blogPost = await prisma.blogPost.findUnique({
+      where: { id },
+      select: { status: true },
+    })
+
+    if (!blogPost) {
+      return NextResponse.json({ error: "Blog post not found" }, { status: 404 })
+    }
+
+    const shouldSetPublishedAt = Boolean(isPublished && blogPost.status === "PUBLISHED")
 
     // Upsert: create if doesn't exist, update if it does
     const translation = await prisma.blogPostTranslation.upsert({
@@ -35,7 +45,7 @@ export async function PUT(request: NextRequest, { params }: Params) {
         metaDesc: metaDesc || "",
         urlSlug: urlSlug || `${lang}-${id}`,
         isPublished: isPublished || false,
-        publishedAt: isPublished ? new Date() : null,
+        publishedAt: shouldSetPublishedAt ? new Date() : null,
         wordCount: wordCount || 0,
       },
       update: {
@@ -45,7 +55,9 @@ export async function PUT(request: NextRequest, { params }: Params) {
         ...(metaDesc !== undefined && { metaDesc }),
         ...(urlSlug !== undefined && { urlSlug }),
         ...(isPublished !== undefined && { isPublished }),
-        ...(isPublished && { publishedAt: new Date() }),
+        ...(isPublished !== undefined && {
+          publishedAt: shouldSetPublishedAt ? new Date() : null,
+        }),
         ...(wordCount !== undefined && { wordCount }),
       },
     })

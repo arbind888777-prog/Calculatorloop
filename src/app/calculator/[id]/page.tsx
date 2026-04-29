@@ -1,6 +1,7 @@
 import { Metadata } from 'next'
 import { notFound, redirect } from 'next/navigation'
 import { headers } from 'next/headers'
+import Link from 'next/link'
 import { calculatorComponents } from '@/lib/calculatorRegistry'
 import { toolsData } from '@/lib/toolsData'
 import { BackButton } from '@/components/ui/back-button'
@@ -13,6 +14,7 @@ import { FAQSection } from '@/components/calculators/ui/FAQSection'
 import { CalculatorSchema, FAQSchema, HowToSchema } from '@/components/seo/AdvancedSchema'
 import { getCalculatorSeoProfile } from '@/lib/calculatorSeo'
 import { prisma } from '@/lib/prisma'
+import { collectCalculatorGuides } from '@/lib/calculatorGuides'
 
 function normalizeCalculatorId(raw: string): string {
   const decoded = (() => {
@@ -60,10 +62,16 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
     }
   }
 
-  // Fetch db translation override if available
-  const dbTranslation = await prisma.calculatorTranslation.findFirst({
-    where: { calculatorId: id, language }
-  });
+  const calculatorRecord = await prisma.calculator.findUnique({
+    where: { slug: id },
+    include: {
+      translations: {
+        where: { language },
+        take: 1,
+      },
+    },
+  })
+  const dbTranslation = calculatorRecord?.translations[0]
 
   const staticMeta = localizeToolMeta({
     dict,
@@ -150,10 +158,38 @@ export default async function CalculatorPage({ params }: { params: Promise<{ id:
     const baseUrl = getSiteUrl()
     const pathname = `${prefix}/calculator/${id}`
 
-    // Fetch db translation override if available
-    const dbTranslation = await prisma.calculatorTranslation.findFirst({
-      where: { calculatorId: id, language }
-    });
+    const calculatorRecord = await prisma.calculator.findUnique({
+      where: { slug: id },
+      include: {
+        translations: {
+          where: { language },
+          take: 1,
+        },
+        blogPosts: {
+          where: {
+            status: 'PUBLISHED',
+            translations: {
+              some: {
+                language,
+                isPublished: true,
+              },
+            },
+          },
+          include: {
+            translations: {
+              where: { language, isPublished: true },
+              take: 1,
+            },
+          },
+          orderBy: [
+            { viewCount: 'desc' },
+            { updatedAt: 'desc' },
+          ],
+          take: 6,
+        },
+      },
+    })
+    const dbTranslation = calculatorRecord?.translations[0]
 
     const staticMeta = categoryInfo
       ? localizeToolMeta({
@@ -185,6 +221,16 @@ export default async function CalculatorPage({ params }: { params: Promise<{ id:
     }
 
     const canonicalUrl = `${baseUrl}${pathname}`
+    const {
+      guidePosts,
+      startHereGuide,
+      moreGuides,
+    } = collectCalculatorGuides({
+      calculatorId: id,
+      language,
+      dbPosts: calculatorRecord?.blogPosts || [],
+    })
+    const previewGuides = moreGuides.slice(0, 3)
 
     return (
       <div className="min-h-screen bg-background pb-16">
@@ -217,6 +263,67 @@ export default async function CalculatorPage({ params }: { params: Promise<{ id:
             title={meta.title}
             description={meta.description ?? ''}
           />
+
+          {startHereGuide && (
+            <section className="mt-10 rounded-2xl border bg-card p-6 text-card-foreground shadow-sm">
+              <div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
+                <div>
+                  <p className="text-sm font-semibold text-primary">Start Here</p>
+                  <h2 className="mt-1 text-2xl font-bold">Guides for {meta.title}</h2>
+                  <p className="mt-2 text-sm text-muted-foreground">
+                    Beginners can read one guide first, then use the calculator with more confidence.
+                  </p>
+                </div>
+                <div className="flex items-center gap-3">
+                  <div className="text-sm text-muted-foreground">
+                    {guidePosts.length} linked guide{guidePosts.length === 1 ? '' : 's'}
+                  </div>
+                  <Link
+                    href={`${prefix}/calculator/${id}/guides`}
+                    className="text-sm font-semibold text-primary transition-colors hover:text-primary/80"
+                  >
+                    View all guides
+                  </Link>
+                </div>
+              </div>
+
+              <div className="mt-6 grid gap-4 lg:grid-cols-[1.4fr_1fr]">
+                <Link
+                  href={`${prefix}/blog/${startHereGuide.slug}`}
+                  className="rounded-2xl border border-primary/20 bg-primary/5 p-5 transition-colors hover:border-primary/40 hover:bg-primary/10"
+                >
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="rounded-full bg-primary px-2.5 py-1 text-xs font-semibold text-primary-foreground">
+                      Recommended first
+                    </span>
+                    <span className="text-xs text-muted-foreground">
+                      {startHereGuide.readingTime} min read
+                    </span>
+                  </div>
+                  <h3 className="mt-4 text-xl font-bold">{startHereGuide.title}</h3>
+                  <p className="mt-3 text-sm leading-6 text-muted-foreground">
+                    {startHereGuide.description}
+                  </p>
+                </Link>
+
+                <div className="grid gap-3">
+                  {previewGuides.map((guide) => (
+                    <Link
+                      key={guide.id}
+                      href={`${prefix}/blog/${guide.slug}`}
+                      className="rounded-2xl border border-border bg-background/60 p-4 transition-colors hover:border-primary/30 hover:bg-background"
+                    >
+                      <div className="text-xs text-muted-foreground">{guide.readingTime} min read</div>
+                      <h3 className="mt-2 text-base font-semibold leading-snug">{guide.title}</h3>
+                      <p className="mt-2 text-sm text-muted-foreground line-clamp-3">
+                        {guide.description}
+                      </p>
+                    </Link>
+                  ))}
+                </div>
+              </div>
+            </section>
+          )}
 
           <section className="mt-10 rounded-2xl border bg-card p-6 text-card-foreground shadow-sm">
             <h2 className="text-xl font-semibold">About {meta.title}</h2>

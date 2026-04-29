@@ -3,14 +3,15 @@
  * Shared helper to enforce role-based access on admin API routes.
  *
  * Usage:
- *   const guard = await requireAdmin("editor")   // SUPER_ADMIN | EDITOR
+ *   const guard = await requireAdmin("editor")
  *   if (!guard.ok) return guard.response
  *   // guard.session is now available
  */
 
 import { getServerSession } from "next-auth"
-import { authOptions } from "./auth"
+import type { Session } from "next-auth"
 import { NextResponse } from "next/server"
+import { authOptions } from "./auth"
 
 type MinRole = "viewer" | "editor" | "superadmin"
 
@@ -20,15 +21,13 @@ const ALLOWED: Record<MinRole, string[]> = {
   superadmin: ["SUPER_ADMIN"],
 }
 
-type SessionUser = {
-  id: string
-  role?: string
-  name?: string | null
-  email?: string | null
+type AdminSession = Session & {
+  user: NonNullable<Session["user"]> & {
+    id: string
+    role?: string
+  }
 }
-type AdminSession = Omit<NonNullable<Awaited<ReturnType<typeof getServerSession>>>, "user"> & {
-  user: SessionUser
-}
+
 type GuardSuccess = { ok: true; session: AdminSession; response?: never }
 type GuardFail = { ok: false; response: NextResponse; session?: never }
 type GuardResult = GuardSuccess | GuardFail

@@ -12,10 +12,11 @@ export async function GET(request: NextRequest) {
 
     const { searchParams } = new URL(request.url)
     const page = parseInt(searchParams.get("page") || "1")
-    const limit = parseInt(searchParams.get("limit") || "20")
+    const limit = Math.min(Math.max(parseInt(searchParams.get("limit") || "20"), 1), 50)
     const search = searchParams.get("search")
     const category = searchParams.get("category")
     const status = searchParams.get("status")
+    const selectedId = searchParams.get("selectedId")
 
     const where: any = {}
 
@@ -29,7 +30,7 @@ export async function GET(request: NextRequest) {
     if (status === "active") where.isActive = true
     if (status === "inactive") where.isActive = false
 
-    const [calculators, total] = await Promise.all([
+    const [calculators, total, selectedCalculator] = await Promise.all([
       prisma.calculator.findMany({
         where,
         include: {
@@ -42,18 +43,42 @@ export async function GET(request: NextRequest) {
         take: limit,
       }),
       prisma.calculator.count({ where }),
+      selectedId
+        ? prisma.calculator.findUnique({
+            where: { id: selectedId },
+            include: {
+              translations: { where: { language: "en" }, take: 1 },
+              category: { select: { name: true, slug: true } },
+              _count: { select: { translations: true } },
+            },
+          })
+        : Promise.resolve(null),
     ])
 
+    const mappedCalculators = calculators.map((c) => ({
+      id: c.id,
+      slug: c.slug,
+      name: c.translations[0]?.title || c.slug,
+      category: c.category?.name || "",
+      totalUses: c.totalUses,
+      isActive: c.isActive,
+      languageCount: c._count.translations,
+    }))
+
+    if (selectedCalculator && !mappedCalculators.some((calculator) => calculator.id === selectedCalculator.id)) {
+      mappedCalculators.unshift({
+        id: selectedCalculator.id,
+        slug: selectedCalculator.slug,
+        name: selectedCalculator.translations[0]?.title || selectedCalculator.slug,
+        category: selectedCalculator.category?.name || "",
+        totalUses: selectedCalculator.totalUses,
+        isActive: selectedCalculator.isActive,
+        languageCount: selectedCalculator._count.translations,
+      })
+    }
+
     return NextResponse.json({
-      calculators: calculators.map((c) => ({
-        id: c.id,
-        slug: c.slug,
-        name: c.translations[0]?.title || c.slug,
-        category: c.category?.name || "",
-        totalUses: c.totalUses,
-        isActive: c.isActive,
-        languageCount: c._count.translations,
-      })),
+      calculators: mappedCalculators,
       total,
       page,
       totalPages: Math.ceil(total / limit),
