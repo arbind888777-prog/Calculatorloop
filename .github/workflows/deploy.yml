@@ -1,4 +1,4 @@
-name: Deploy Calculatorloop
+name: Deploy CalculatorLoop
 
 on:
   push:
@@ -17,9 +17,9 @@ jobs:
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.VPS_HOST }}
-          username: ${{ secrets.VPS_USERNAME }}
+          username: ${{ secrets.VPS_USER }}
           port: ${{ secrets.VPS_PORT }}
-          key: ${{ secrets.VPS_SSH_KEY }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
             cd /var/www/Calculatorloop
             git pull origin main
